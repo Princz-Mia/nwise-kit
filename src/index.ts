@@ -15,3 +15,4 @@ export type {
 export { validateModel } from './model/validate-model.js';
 export { caseValues, validateCases, validateMatrix } from './model/cases.js';
 export type { CaseInput, MatrixInput, TestCase } from './model/cases.js';
+export { canonicalJson, matrixHash, modelHash, sha256 } from './model/canonical.js';
