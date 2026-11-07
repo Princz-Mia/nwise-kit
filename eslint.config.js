@@ -20,7 +20,11 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
-      '@typescript-eslint/switch-exhaustiveness-check': 'error',
+      '@typescript-eslint/switch-exhaustiveness-check': [
+        'error',
+        { considerDefaultExhaustiveForUnions: true },
+      ],
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       eqeqeq: ['error', 'always'],
       'no-console': 'error',
     },
