@@ -25,6 +25,8 @@ export default tseslint.config(
         { considerDefaultExhaustiveForUnions: true },
       ],
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+      // The strict preset forbids `!`; checked casts are the explicit alternative.
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
       eqeqeq: ['error', 'always'],
       'no-console': 'error',
     },
