@@ -1,0 +1,7 @@
+# <type>(<optional scope>): <imperative summary, at most 72 characters>
+#
+# Types: feat fix docs test build ci chore refactor perf style revert
+# Scopes: model constraints coverage suggestions evidence vitest reporter
+#         reports cli schemas
+#
+# Body: explain why, not what. Wrap at 72 characters.

@@ -1,0 +1,59 @@
+# NwiseKit: root ignore rules.
+# Commit package-lock.json, JSON schemas, examples, benchmark inputs
+# and small test fixtures.
+
+# Local secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+.npmrc.local
+/secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Node / TypeScript
+node_modules/
+/dist/
+*.tsbuildinfo
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Packed tarballs; the release workflow builds its own
+*.tgz
+
+# Test output
+/coverage/
+/test-results/
+
+# Reports and runtime evidence written by the tool itself
+/nwise-kit-results/
+/examples/**/nwise-kit-results/
+/examples/**/report.json
+/examples/**/report.html
+/examples/**/suggestions.json
+
+# Local runtime state; curated benchmark results are committed elsewhere
+/benchmarks/results/
+/logs/
+/tmp/
+*.log
+
+# IDE/editor local state
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating-system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/

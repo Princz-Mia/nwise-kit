@@ -1,0 +1,16 @@
+# Normalise text in the repository. Sources, schemas and fixtures stay LF
+# on every checkout so formatting checks and content hashes agree across
+# Windows, Linux and macOS.
+* text=auto eol=lf
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.tgz binary
+
+# Collapsed in GitHub diffs and left out of language statistics.
+package-lock.json linguist-generated=true
