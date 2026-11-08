@@ -1,5 +1,5 @@
 import type { DomainValue } from '../model/types.js';
-import type { Group, Universe } from './universe.js';
+import type { Group, Level, Universe } from './universe.js';
 import { cellOf, decodeCell } from './universe.js';
 
 /** Exact coverage counts. `percentage` is derived; the counts are authoritative. */
@@ -23,27 +23,31 @@ export function metric(covered: number, total: number): Metric {
 }
 
 /**
- * The interactions covered by a set of valid configurations. Adding the
- * same configuration twice changes nothing, so duplicates never count.
+ * The interactions of one strength covered by a set of valid
+ * configurations, by default at the model strength. Adding the same
+ * configuration twice changes nothing, so duplicates never count.
  */
 export class CoverageSet {
   private readonly bits: Uint8Array[];
   private readonly perGroup: number[];
   private count = 0;
 
-  constructor(private readonly universe: Universe) {
-    this.bits = universe.groups.map((g) => new Uint8Array(g.size));
-    this.perGroup = universe.groups.map(() => 0);
+  constructor(
+    private readonly universe: Universe,
+    private readonly level: Level = universe,
+  ) {
+    this.bits = level.groups.map((g) => new Uint8Array(g.size));
+    this.perGroup = level.groups.map(() => 0);
   }
 
   /** Marks the interactions of a valid configuration; returns how many were new. */
   add(x: ArrayLike<number>): number {
     let added = 0;
-    this.universe.groups.forEach((group, g) => {
+    this.level.groups.forEach((group, g) => {
       const cell = cellOf(group, x);
       const bits = this.bits[g] as Uint8Array;
       if (bits[cell] === 0) {
-        if (this.universe.valid[g]?.[cell] !== 1) {
+        if (this.level.valid[g]?.[cell] !== 1) {
           throw new Error('Internal error: a validated configuration projects to an invalid interaction');
         }
         bits[cell] = 1;
@@ -66,18 +70,18 @@ export class CoverageSet {
 
   /** Overall coverage: covered interactions over valid interactions, summed across groups. */
   metric(): Metric {
-    return metric(this.count, this.universe.interactions);
+    return metric(this.count, this.level.interactions);
   }
 
   groupMetrics(): Metric[] {
-    return this.universe.groupTotals.map((total, g) => metric(this.perGroup[g] ?? 0, total));
+    return this.level.groupTotals.map((total, g) => metric(this.perGroup[g] ?? 0, total));
   }
 
   /** Valid interactions not covered, by group order and then by domain indices. */
   missing(): Interaction[] {
     const result: Interaction[] = [];
-    this.universe.groups.forEach((group, g) => {
-      const valid = this.universe.valid[g] as Uint8Array;
+    this.level.groups.forEach((group, g) => {
+      const valid = this.level.valid[g] as Uint8Array;
       const bits = this.bits[g] as Uint8Array;
       for (let cell = 0; cell < group.size; cell++) {
         if (valid[cell] === 1 && bits[cell] === 0) {

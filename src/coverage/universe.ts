@@ -25,19 +25,29 @@ export interface Group {
   readonly size: number;
 }
 
-/** The exact set of valid configurations and interactions of a model. */
-export interface Universe {
-  readonly model: Model;
+/** The valid interactions of one strength. */
+export interface Level {
   readonly strength: number;
-  readonly rawConfigurations: number;
-  /** Valid configurations in canonical enumeration order, `n` indices each. */
-  readonly configurations: Int32Array;
-  readonly validConfigurations: number;
   readonly groups: readonly Group[];
   /** Per group, 1 for each cell that is a valid interaction. */
   readonly valid: readonly Uint8Array[];
   readonly groupTotals: readonly number[];
   readonly interactions: number;
+}
+
+/**
+ * The exact set of valid configurations and interactions of a model. The
+ * top-level fields describe the model strength; `levels` also holds every
+ * lower strength down to single values, for the coverage profile.
+ */
+export interface Universe extends Level {
+  readonly model: Model;
+  readonly rawConfigurations: number;
+  /** Valid configurations in canonical enumeration order, `n` indices each. */
+  readonly configurations: Int32Array;
+  readonly validConfigurations: number;
+  /** Strengths 1 up to the model strength, in that order. */
+  readonly levels: readonly Level[];
   /** Warnings such as domain values no valid configuration uses. */
   readonly diagnostics: readonly Diagnostic[];
 }
@@ -50,8 +60,9 @@ export interface UniverseOptions {
 /**
  * Enumerates every complete assignment in canonical order, keeps those
  * that satisfy all constraints and derives every valid interaction of
- * the model strength. An interaction is valid only if some valid
- * configuration contains it, so feasibility is global.
+ * each strength from 1 to the model strength. An interaction is valid
+ * only if some valid configuration contains it, so feasibility is global.
+ * The interaction limit applies to the model strength.
  *
  * Throws instead of returning a partial universe when a limit is hit.
  */
@@ -83,22 +94,22 @@ export function buildUniverse(
     );
   }
 
-  const groups = buildGroups(sizes, strength);
-  const cells = groups.reduce((sum, g) => sum + g.size, 0);
+  const levelGroups = Array.from({ length: strength }, (_, i) => buildGroups(sizes, i + 1));
+  const cells = levelGroups.flat().reduce((sum, g) => sum + g.size, 0);
   if (cells > MAX_INTERACTION_CELLS) {
     throw incomplete(
       'INTERACTION_CELLS_EXCEEDED',
       `The parameter groups have ${String(cells)} value combinations; at most ${String(MAX_INTERACTION_CELLS)} fit in memory`,
     );
   }
-  const valid = groups.map((g) => new Uint8Array(g.size));
-  const groupTotals = groups.map(() => 0);
-  const reachable = sizes.map((size) => new Uint8Array(size));
+  const valid = levelGroups.map((groups) => groups.map((g) => new Uint8Array(g.size)));
+  const groupTotals = levelGroups.map((groups) => groups.map(() => 0));
+  const interactions = levelGroups.map(() => 0);
+  const top = strength - 1;
   const constraints: readonly CompiledConstraint[] = compileConstraints(model);
 
   const found: number[] = [];
   let validCount = 0;
-  let interactions = 0;
   const x = new Int32Array(n);
   let visited = 0;
   const total = Number(raw);
@@ -122,22 +133,24 @@ export function buildUniverse(
       }
       for (let i = 0; i < n; i++) {
         found.push(x[i] ?? 0);
-        const seen = reachable[i];
-        if (seen !== undefined) {
-          seen[x[i] ?? 0] = 1;
-        }
       }
-      for (let g = 0; g < groups.length; g++) {
-        const cell = cellOf(groups[g] as Group, x);
-        const bits = valid[g] as Uint8Array;
-        if (bits[cell] === 0) {
-          bits[cell] = 1;
-          groupTotals[g] = (groupTotals[g] ?? 0) + 1;
-          if (++interactions > limits.maxInteractions) {
-            throw incomplete(
-              'INTERACTIONS_EXCEEDED',
-              `The model has more than ${String(limits.maxInteractions)} valid interactions`,
-            );
+      for (let l = 0; l < strength; l++) {
+        const groups = levelGroups[l] as Group[];
+        const levelValid = valid[l] as Uint8Array[];
+        const totals = groupTotals[l] as number[];
+        for (let g = 0; g < groups.length; g++) {
+          const cell = cellOf(groups[g] as Group, x);
+          const bits = levelValid[g] as Uint8Array;
+          if (bits[cell] === 0) {
+            bits[cell] = 1;
+            totals[g] = (totals[g] ?? 0) + 1;
+            interactions[l] = (interactions[l] ?? 0) + 1;
+            if (l === top && (interactions[l] ?? 0) > limits.maxInteractions) {
+              throw incomplete(
+                'INTERACTIONS_EXCEEDED',
+                `The model has more than ${String(limits.maxInteractions)} valid interactions`,
+              );
+            }
           }
         }
       }
@@ -163,17 +176,23 @@ export function buildUniverse(
     ]);
   }
 
+  const levels: Level[] = levelGroups.map((groups, l) => ({
+    strength: l + 1,
+    groups,
+    valid: valid[l] as Uint8Array[],
+    groupTotals: groupTotals[l] as number[],
+    interactions: interactions[l] ?? 0,
+  }));
+  const single = levels[0] as Level;
   return {
+    ...(levels[top] as Level),
     model,
-    strength,
     rawConfigurations: total,
     configurations: Int32Array.from(found),
     validConfigurations: validCount,
-    groups,
-    valid,
-    groupTotals,
-    interactions,
-    diagnostics: unreachableValues(model, reachable),
+    levels,
+    // Single-parameter groups are in parameter order, so group p's cells are p's values.
+    diagnostics: unreachableValues(model, single.valid),
   };
 }
 
