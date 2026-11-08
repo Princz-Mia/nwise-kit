@@ -1,0 +1,60 @@
+{
+  "name": "nwise-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Constraint-aware combinatorial coverage for existing test suites.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Princz-Mia/nwise-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Princz-Mia/nwise-kit/issues"
+  },
+  "homepage": "https://github.com/Princz-Mia/nwise-kit#readme",
+  "keywords": [
+    "testing",
+    "pairwise",
+    "combinatorial",
+    "coverage",
+    "vitest"
+  ],
+  "scripts": {
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "vitest run --project unit",
+    "build": "node scripts/build.mjs",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "fast-check": "4.10.2",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  }
+}
