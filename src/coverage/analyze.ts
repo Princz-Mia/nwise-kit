@@ -10,7 +10,7 @@ import { compareCodeUnits } from '../model/types.js';
 import { validateModel } from '../model/validate-model.js';
 import type { Interaction, Metric } from './coverage.js';
 import { CoverageSet } from './coverage.js';
-import type { UniverseOptions } from './universe.js';
+import type { Level, UniverseOptions } from './universe.js';
 import { buildUniverse } from './universe.js';
 
 export interface AnalyzeMatrixOptions {
@@ -23,6 +23,18 @@ export interface AnalyzeMatrixOptions {
 
 export interface GroupCoverage {
   readonly parameters: readonly string[];
+  readonly declared: Metric;
+  readonly observed: Metric | null;
+  readonly passed: Metric | null;
+}
+
+/**
+ * Coverage at one strength. The profile runs from single values (each
+ * value of each parameter appears in some test) up to the model
+ * strength, showing how coverage falls as interactions grow.
+ */
+export interface StrengthCoverage {
+  readonly strength: number;
   readonly declared: Metric;
   readonly observed: Metric | null;
   readonly passed: Metric | null;
@@ -43,6 +55,8 @@ export interface StaticAnalysis {
   };
   /** Runtime metrics are null: a static analysis has no runtime evidence. */
   readonly metrics: { readonly declared: Metric; readonly observed: null; readonly passed: null };
+  /** Strengths 1 up to the model strength; the last entry equals `metrics`. */
+  readonly profile: readonly StrengthCoverage[];
   readonly groups: readonly GroupCoverage[];
   readonly missing: { readonly declared: readonly Interaction[] };
   readonly diagnostics: readonly Diagnostic[];
@@ -77,6 +91,13 @@ export function analyzeMatrixWith(
     declared.add(testCase.indices);
   }
   const groupMetrics = declared.groupMetrics();
+  const coverageAt = (level: Level): Metric => {
+    const covered = new CoverageSet(universe, level);
+    for (const testCase of cases) {
+      covered.add(testCase.indices);
+    }
+    return covered.metric();
+  };
 
   return {
     kind: 'static',
@@ -91,6 +112,12 @@ export function analyzeMatrixWith(
       interactions: universe.interactions,
     },
     metrics: { declared: declared.metric(), observed: null, passed: null },
+    profile: universe.levels.map((level) => ({
+      strength: level.strength,
+      declared: level === universe.levels.at(-1) ? declared.metric() : coverageAt(level),
+      observed: null,
+      passed: null,
+    })),
     groups: universe.groups.map((group, g) => ({
       parameters: group.parameters.map((p) => model.parameters[p]?.name ?? ''),
       declared: groupMetrics[g] ?? { covered: 0, total: 0, percentage: 0 },
