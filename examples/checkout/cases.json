@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "modelId": "checkout-access",
+  "cases": [
+    {
+      "id": "guest-eu-legacy",
+      "values": { "role": "guest", "plan": "free", "newCheckout": false, "region": "EU" }
+    },
+    {
+      "id": "member-us-new",
+      "values": { "role": "member", "plan": "premium", "newCheckout": true, "region": "US" }
+    },
+    {
+      "id": "admin-eu-new",
+      "values": { "role": "admin", "plan": "free", "newCheckout": true, "region": "EU" }
+    },
+    {
+      "id": "member-eu-legacy",
+      "values": { "role": "member", "plan": "free", "newCheckout": false, "region": "EU" }
+    }
+  ]
+}
