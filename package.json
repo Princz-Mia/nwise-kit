@@ -46,8 +46,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "vitest run --project unit",
+    "test:integration": "node scripts/build.mjs && vitest run --project integration",
     "build": "node scripts/build.mjs",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run build"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run test:integration && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
