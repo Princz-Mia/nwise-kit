@@ -30,3 +30,6 @@ export type {
   ReportInteraction,
   StaticReport,
 } from './reports/report.js';
+export { readStaticReport } from './reports/read-report.js';
+export { checkCoverage, meetsThreshold, METRIC_NAMES, parseThreshold } from './reports/check.js';
+export type { CoverageVerdict, MetricName } from './reports/check.js';
