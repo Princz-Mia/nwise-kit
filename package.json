@@ -16,6 +16,9 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "nwise-kit": "./dist/cli/index.js"
+  },
   "files": [
     "dist",
     "schemas",
