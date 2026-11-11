@@ -93,6 +93,25 @@ describe('exact coverage against the brute-force reference', () => {
     );
   });
 
+  test('agrees on the coverage profile at every strength', () => {
+    fc.assert(
+      fc.property(scenarioArb, ({ model, rows }) => {
+        const actual = analyze(model, rows).profile;
+        expect(actual.map((p) => p.strength)).toEqual(
+          Array.from({ length: model.strength }, (_, i) => i + 1),
+        );
+        for (const level of actual) {
+          const expected = referenceCoverage({ ...model, strength: level.strength }, rows);
+          expect([level.declared.covered, level.declared.total]).toEqual([
+            expected.covered,
+            expected.total,
+          ]);
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+
   test('reports an unsatisfiable model exactly when the reference finds no valid configuration', () => {
     fc.assert(
       fc.property(modelArb, (model) => {

@@ -95,6 +95,46 @@ describe('analyzeMatrix on the golden model', () => {
   });
 });
 
+describe('analyzeMatrix strength profile', () => {
+  const profile = (analysis: ReturnType<typeof analyzeMatrix>) =>
+    analysis.profile.map((p) => [p.strength, p.declared.covered, p.declared.total]);
+
+  test('shows each value covered while pairs are still missing', () => {
+    const analysis = analyzeMatrix({ model: golden, cases: goldenRows('000', '111') });
+    expect(profile(analysis)).toEqual([
+      [1, 6, 6],
+      [2, 6, 11],
+    ]);
+    expect(analysis.profile.at(-1)?.declared).toEqual(analysis.metrics.declared);
+    expect(analysis.profile.every((p) => p.observed === null && p.passed === null)).toBe(true);
+  });
+
+  test('runs from single values up to three-way interactions at strength three', () => {
+    const analysis = analyzeMatrix({
+      model: { ...golden, strength: 3 },
+      cases: goldenRows('000', '111'),
+    });
+    expect(profile(analysis)).toEqual([
+      [1, 6, 6],
+      [2, 6, 11],
+      [3, 2, 6],
+    ]);
+  });
+
+  test('counts only valid single values', () => {
+    const model = { ...golden, constraints: [{ id: 'no-c1', rule: { eq: ['C', 0] } }] };
+    const analysis = analyzeMatrix({ model, cases: [] });
+    expect(profile(analysis)[0]).toEqual([1, 0, 5]);
+  });
+
+  test('applies the interaction limit to the model strength only', () => {
+    // Strength three has 6 valid triples but 11 valid pairs.
+    const model = { ...golden, strength: 3 };
+    const analysis = analyzeMatrix({ model, cases: [], limits: { maxInteractions: 6 } });
+    expect(analysis.metrics.declared.total).toBe(6);
+  });
+});
+
 describe('analyzeMatrix feasibility', () => {
   test('reports an unsatisfiable model instead of a percentage', () => {
     const model = {

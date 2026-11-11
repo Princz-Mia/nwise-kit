@@ -28,6 +28,17 @@ describe('buildUniverse', () => {
     expect(universe.interactions).toBe(11);
   });
 
+  test('holds every strength from single values up to the model strength', () => {
+    const universe = buildUniverse(validateModel({ ...golden, strength: 3 }), DEFAULT_LIMITS);
+    expect(universe.levels.map((l) => [l.strength, l.groups.length, l.interactions])).toEqual([
+      [1, 3, 6],
+      [2, 3, 11],
+      [3, 1, 6],
+    ]);
+    expect(universe.interactions).toBe(6);
+    expect(universe.levels.at(-1)?.groups).toBe(universe.groups);
+  });
+
   test('encodes and decodes group cells with the first parameter most significant', () => {
     const wide = validateModel({ ...golden, parameters: { A: [0, 1], B: [0, 1, 2], C: [0, 1] }, constraints: [] });
     const universe = buildUniverse(wide, DEFAULT_LIMITS);
