@@ -24,3 +24,9 @@ export type {
   StrengthCoverage,
 } from './coverage/analyze.js';
 export type { Interaction, Metric } from './coverage/coverage.js';
+export { createStaticReport, formatReport, REPORT_SCHEMA_VERSION } from './reports/report.js';
+export type {
+  CreateStaticReportOptions,
+  ReportInteraction,
+  StaticReport,
+} from './reports/report.js';
