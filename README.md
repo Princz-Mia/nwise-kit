@@ -8,9 +8,10 @@ dimensions) an existing test suite covers, lists the missing
 interactions, and recommends extra configurations to close the gaps.
 
 > **Status:** under development. Nothing has been published to npm yet.
-> The exact coverage engine (`analyzeMatrix`) works from a checkout of
-> this repository; the command-line interface, recommendations, the
-> Vitest adapter and the reports are being built.
+> From a checkout of this repository, the `analyze` and `check` commands
+> and the library work today. Recommendations (`suggest`), the Vitest
+> adapter for observed and passed coverage, and HTML reports are being
+> built.
 
 ## The problem
 
@@ -136,6 +137,46 @@ Values are strings, booleans or finite numbers, one type per parameter, and
 comparison is type-strict: `true` and `"true"` are different values. A
 matrix row must assign every parameter and satisfy every constraint;
 invalid rows are rejected, never dropped.
+
+## Command line
+
+Until the package is published, build it from a checkout and run the
+binary with Node.js 24:
+
+```bash
+npm ci
+npm run build
+node dist/cli/index.js analyze --model examples/discount/model.json --cases examples/discount/cases.json
+```
+
+`analyze` prints a summary: the model and matrix identity, declared
+coverage, coverage by strength and the first missing interactions.
+Observed and passed coverage show as `N/A` because they need a test run.
+Add `--json report.json` to write the full report; an existing file is
+only replaced with `--force`, and an input file never is.
+
+```bash
+node dist/cli/index.js analyze --model model.json --cases cases.json --json report.json
+node dist/cli/index.js check --input report.json --metric declared --min-coverage 95
+```
+
+`check` recomputes every count in the report, so an edited report is
+rejected, and compares exact counts with the threshold: 94,999 of 100,000
+interactions fails a 95% gate. Its default metric is `observed`; for a
+report from `analyze`, pass `--metric declared`. A met threshold says
+nothing about whether the tests themselves passed, so keep your test
+runner's exit code as a separate CI step.
+
+| Exit code | Meaning                                                                                |
+| --------- | -------------------------------------------------------------------------------------- |
+| 0         | Success; any requested gate passed                                                     |
+| 1         | A coverage gate was not met                                                            |
+| 2         | Invalid arguments, model, matrix or report, an unavailable metric, unsatisfiable model |
+| 3         | Incomplete analysis, a resource limit, an I/O failure or an internal error             |
+
+Models, matrices and reports have JSON Schemas in [schemas/](schemas/),
+which editors can use for validation and completion. The tool checks more
+than a schema can, such as references to unknown parameters.
 
 ## Limitations
 
