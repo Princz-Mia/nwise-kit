@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "modelId": "order-discount",
+  "cases": [
+    {
+      "id": "guest-small-order",
+      "values": { "customer": "guest", "membership": "none", "orderTotal": "up-to-100" }
+    },
+    {
+      "id": "silver-medium-order",
+      "values": { "customer": "registered", "membership": "silver", "orderTotal": "100-to-200" }
+    },
+    {
+      "id": "gold-large-order",
+      "values": { "customer": "registered", "membership": "gold", "orderTotal": "over-200" }
+    }
+  ]
+}

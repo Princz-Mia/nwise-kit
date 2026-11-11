@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "os-cpu-protocol",
+  "strength": 2,
+  "parameters": {
+    "os": ["Windows", "Linux"],
+    "cpu": ["Intel", "AMD"],
+    "protocol": ["IPv4", "IPv6"]
+  },
+  "constraints": []
+}

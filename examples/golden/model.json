@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "golden",
+  "strength": 2,
+  "parameters": { "A": [0, 1], "B": [0, 1], "C": [0, 1] },
+  "constraints": [
+    { "id": "a-needs-b", "rule": { "implies": [{ "eq": ["A", 1] }, { "eq": ["B", 1] }] } }
+  ]
+}

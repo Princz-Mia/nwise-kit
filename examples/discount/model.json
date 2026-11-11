@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "order-discount",
+  "strength": 2,
+  "parameters": {
+    "customer": ["guest", "registered"],
+    "membership": ["none", "silver", "gold"],
+    "orderTotal": ["up-to-100", "100-to-200", "over-200"]
+  },
+  "constraints": [
+    {
+      "id": "guests-have-no-card",
+      "rule": { "implies": [{ "eq": ["customer", "guest"] }, { "eq": ["membership", "none"] }] }
+    }
+  ]
+}

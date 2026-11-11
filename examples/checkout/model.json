@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "checkout-access",
+  "strength": 2,
+  "parameters": {
+    "role": ["guest", "member", "admin"],
+    "plan": ["free", "premium"],
+    "newCheckout": [false, true],
+    "region": ["EU", "US"]
+  },
+  "constraints": [
+    {
+      "id": "guest-has-free-plan",
+      "rule": { "implies": [{ "eq": ["role", "guest"] }, { "eq": ["plan", "free"] }] }
+    }
+  ]
+}

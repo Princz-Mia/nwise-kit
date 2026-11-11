@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "modelId": "os-cpu-protocol",
+  "cases": [
+    { "id": "t1", "values": { "os": "Windows", "cpu": "Intel", "protocol": "IPv4" } },
+    { "id": "t2", "values": { "os": "Linux", "cpu": "AMD", "protocol": "IPv6" } }
+  ]
+}
