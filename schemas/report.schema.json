@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:nwise-kit:schema:report:1",
   "title": "NwiseKit report",
-  "description": "A self-contained coverage report. Counts are authoritative and percentages are derived from them. When a report is read back, the tool recomputes every count from the embedded model and matrix and rejects any difference.",
+  "description": "A self-contained coverage report: static (from analyze) or runtime (from a test run). Counts are authoritative and percentages are derived from them. When a report is read back, the tool recomputes every count from the embedded model, matrix and, for runtime reports, evidence, and rejects any difference.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -28,26 +28,68 @@
     "durationMs"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "toolVersion": { "type": "string", "minLength": 1 },
-    "kind": { "const": "static" },
-    "model": { "$ref": "urn:nwise-kit:schema:model:1" },
-    "matrix": { "$ref": "urn:nwise-kit:schema:matrix:1" },
-    "modelHash": { "$ref": "#/$defs/sha256" },
-    "matrixHash": { "$ref": "#/$defs/sha256" },
-    "strength": { "enum": [2, 3] },
-    "analysisComplete": { "const": true },
-    "runtimeComplete": { "const": null },
-    "runId": { "const": null },
-    "filters": { "const": null },
+    "schemaVersion": {
+      "const": 1
+    },
+    "toolVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": ["static", "runtime"]
+    },
+    "model": {
+      "$ref": "urn:nwise-kit:schema:model:1"
+    },
+    "matrix": {
+      "$ref": "urn:nwise-kit:schema:matrix:1"
+    },
+    "modelHash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "matrixHash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "strength": {
+      "enum": [2, 3]
+    },
+    "analysisComplete": {
+      "const": true
+    },
+    "runtimeComplete": {
+      "type": ["boolean", "null"],
+      "description": "Null for static reports. False when the run did not finish cleanly; observed and passed are then null."
+    },
+    "runId": {
+      "type": ["string", "null"]
+    },
+    "filters": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/filters"
+        }
+      ]
+    },
     "universe": {
       "type": "object",
       "additionalProperties": false,
       "required": ["rawConfigurations", "validConfigurations", "interactions"],
       "properties": {
-        "rawConfigurations": { "type": "integer", "minimum": 1 },
-        "validConfigurations": { "type": "integer", "minimum": 1 },
-        "interactions": { "type": "integer", "minimum": 1 }
+        "rawConfigurations": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "validConfigurations": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "interactions": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "metrics": {
@@ -55,9 +97,15 @@
       "additionalProperties": false,
       "required": ["declared", "observed", "passed"],
       "properties": {
-        "declared": { "$ref": "#/$defs/metric" },
-        "observed": { "$ref": "#/$defs/optionalMetric" },
-        "passed": { "$ref": "#/$defs/optionalMetric" }
+        "declared": {
+          "$ref": "#/$defs/metric"
+        },
+        "observed": {
+          "$ref": "#/$defs/optionalMetric"
+        },
+        "passed": {
+          "$ref": "#/$defs/optionalMetric"
+        }
       }
     },
     "profile": {
@@ -68,10 +116,20 @@
         "additionalProperties": false,
         "required": ["strength", "declared", "observed", "passed"],
         "properties": {
-          "strength": { "type": "integer", "minimum": 1, "maximum": 3 },
-          "declared": { "$ref": "#/$defs/metric" },
-          "observed": { "$ref": "#/$defs/optionalMetric" },
-          "passed": { "$ref": "#/$defs/optionalMetric" }
+          "strength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "declared": {
+            "$ref": "#/$defs/metric"
+          },
+          "observed": {
+            "$ref": "#/$defs/optionalMetric"
+          },
+          "passed": {
+            "$ref": "#/$defs/optionalMetric"
+          }
         }
       }
     },
@@ -83,10 +141,21 @@
         "additionalProperties": false,
         "required": ["parameters", "declared", "observed", "passed"],
         "properties": {
-          "parameters": { "type": "array", "items": { "type": "string" } },
-          "declared": { "$ref": "#/$defs/metric" },
-          "observed": { "$ref": "#/$defs/optionalMetric" },
-          "passed": { "$ref": "#/$defs/optionalMetric" }
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "declared": {
+            "$ref": "#/$defs/metric"
+          },
+          "observed": {
+            "$ref": "#/$defs/optionalMetric"
+          },
+          "passed": {
+            "$ref": "#/$defs/optionalMetric"
+          }
         }
       }
     },
@@ -95,12 +164,46 @@
       "additionalProperties": false,
       "required": ["declared", "observed", "passed"],
       "properties": {
-        "declared": { "type": "array", "items": { "$ref": "#/$defs/interaction" } },
-        "observed": { "const": null },
-        "passed": { "const": null }
+        "declared": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/interaction"
+          }
+        },
+        "observed": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/interaction"
+              }
+            }
+          ]
+        },
+        "passed": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/interaction"
+              }
+            }
+          ]
+        }
       }
     },
-    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    },
     "limits": {
       "type": "object",
       "additionalProperties": false,
@@ -115,43 +218,174 @@
         "suggestionWork"
       ],
       "properties": {
-        "maxParameters": { "$ref": "#/$defs/positiveInteger" },
-        "maxRawConfigurations": { "$ref": "#/$defs/positiveInteger" },
-        "maxValidConfigurations": { "$ref": "#/$defs/positiveInteger" },
-        "maxInteractions": { "$ref": "#/$defs/positiveInteger" },
-        "maxConstraintDepth": { "$ref": "#/$defs/positiveInteger" },
-        "maxConstraintNodes": { "$ref": "#/$defs/positiveInteger" },
-        "analysisTimeMs": { "$ref": "#/$defs/positiveInteger" },
-        "suggestionWork": { "$ref": "#/$defs/positiveInteger" }
+        "maxParameters": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxRawConfigurations": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxValidConfigurations": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxInteractions": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxConstraintDepth": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxConstraintNodes": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "analysisTimeMs": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "suggestionWork": {
+          "$ref": "#/$defs/positiveInteger"
+        }
       }
     },
-    "durationMs": { "type": "number", "minimum": 0 }
+    "durationMs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "runtime"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "required": ["evidence"],
+        "properties": {
+          "runtimeComplete": {
+            "type": "boolean"
+          },
+          "runId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": true
+        },
+        "type": "object"
+      },
+      "else": {
+        "not": {
+          "properties": {
+            "evidence": true
+          },
+          "required": ["evidence"],
+          "type": "object"
+        },
+        "properties": {
+          "runtimeComplete": {
+            "const": null
+          },
+          "runId": {
+            "const": null
+          },
+          "filters": {
+            "const": null
+          },
+          "metrics": {
+            "properties": {
+              "observed": {
+                "const": null
+              },
+              "passed": {
+                "const": null
+              }
+            },
+            "type": "object"
+          },
+          "missing": {
+            "properties": {
+              "observed": {
+                "const": null
+              },
+              "passed": {
+                "const": null
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ],
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "positiveInteger": { "type": "integer", "minimum": 1 },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
     "metric": {
       "type": "object",
       "additionalProperties": false,
       "required": ["covered", "total", "percentage"],
       "properties": {
-        "covered": { "type": "integer", "minimum": 0 },
-        "total": { "type": "integer", "minimum": 1 },
-        "percentage": { "type": "number", "minimum": 0, "maximum": 100 }
+        "covered": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
       }
     },
     "optionalMetric": {
       "description": "Null when the metric is unavailable, which is different from zero coverage.",
-      "oneOf": [{ "$ref": "#/$defs/metric" }, { "type": "null" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/metric"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "interaction": {
       "type": "object",
       "additionalProperties": false,
       "required": ["parameters", "indices", "values"],
       "properties": {
-        "parameters": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "indices": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
-        "values": { "type": "array", "items": { "type": ["string", "number", "boolean"] } }
+        "parameters": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": ["string", "number", "boolean"]
+          }
+        }
       }
     },
     "diagnostic": {
@@ -159,12 +393,168 @@
       "additionalProperties": false,
       "required": ["code", "severity", "message"],
       "properties": {
-        "code": { "type": "string" },
-        "severity": { "enum": ["error", "warning"] },
-        "message": { "type": "string" },
-        "path": { "type": "string" },
-        "caseIds": { "type": "array", "items": { "type": "string" } },
-        "hint": { "type": "string" }
+        "code": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": ["error", "warning"]
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "caseIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hint": {
+          "type": "string"
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["testNamePattern", "files"],
+      "properties": {
+        "testNamePattern": {
+          "type": ["string", "null"]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId",
+        "modelHash",
+        "matrixHash",
+        "filters",
+        "infrastructureErrors",
+        "tests"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modelHash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "matrixHash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "filters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/filters"
+            }
+          ]
+        },
+        "infrastructureErrors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "testId",
+              "runId",
+              "caseId",
+              "name",
+              "workerId",
+              "outcome",
+              "attempts",
+              "checkpointAttempts",
+              "lateCheckpoints",
+              "location"
+            ],
+            "properties": {
+              "testId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "runId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "caseId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "workerId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "enum": ["passed", "failed", "skipped", "todo", "filtered", "missing"]
+              },
+              "attempts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "checkpointAttempts": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "lateCheckpoints": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "location": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["file", "line", "column"],
+                    "properties": {
+                      "file": {
+                        "type": "string"
+                      },
+                      "line": {
+                        "type": "integer"
+                      },
+                      "column": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
       }
     }
   }

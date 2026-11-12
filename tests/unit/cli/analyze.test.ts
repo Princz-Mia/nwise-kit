@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { parseJson } from '../../../src/model/json.js';
-import { readStaticReport } from '../../../src/reports/read-report.js';
+import { readReport } from '../../../src/reports/read-report.js';
 import { exampleDir, runCli } from './helpers.js';
 
 let dir: string;
@@ -31,7 +31,7 @@ describe('nwise-kit analyze', () => {
     const result = runCli('analyze', '--model', model, '--cases', cases, '--json', report);
     expect(result.code).toBe(0);
     expect(result.stdout).toContain(`Report written to ${report}`);
-    const written = readStaticReport(parseJson(readFileSync(report, 'utf8')));
+    const written = readReport(parseJson(readFileSync(report, 'utf8')));
     expect(written.toolVersion).toBe('9.9.9-test');
     expect(written.metrics.declared).toMatchObject({ covered: 6, total: 11 });
   });

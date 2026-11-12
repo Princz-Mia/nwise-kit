@@ -7,8 +7,8 @@ import type { Limits } from '../model/limits.js';
 import { resolveLimits } from '../model/limits.js';
 import { validateModel } from '../model/validate-model.js';
 import { checkIdentifier, checkObject, Issues } from '../model/shape.js';
-import type { StaticReport } from './report.js';
-import { createStaticReport, REPORT_SCHEMA_VERSION } from './report.js';
+import type { Report } from './report.js';
+import { createRuntimeReport, createStaticReport, REPORT_SCHEMA_VERSION } from './report.js';
 
 const REPORT_KEYS = [
   'schemaVersion',
@@ -57,18 +57,23 @@ const EMBEDDED_ERRORS: readonly ErrorCode[] = [
   'INVALID_LIMITS',
   'UNSUPPORTED_SCHEMA_VERSION',
   'UNSATISFIABLE_MODEL',
+  'INVALID_EVIDENCE',
 ];
 
 /**
- * Reads a report produced earlier and checks it. Every count is
- * recomputed from the embedded model, matrix and limits; any stored
- * value that differs is rejected rather than trusted, so editing a
- * percentage or a count cannot make a report pass. A valid structure or
- * hash does not prove where the report came from.
+ * Reads a static or runtime report produced earlier and checks it. Every
+ * count is recomputed from the embedded model, matrix, limits and, for a
+ * runtime report, evidence; any stored value that differs is rejected
+ * rather than trusted, so editing a percentage or a count cannot make a
+ * report pass. A valid structure or hash does not prove where the report
+ * came from.
  */
-export function readStaticReport(input: unknown): StaticReport {
+export function readReport(input: unknown): Report {
   const issues = new Issues();
-  if (!checkObject(issues, input, '', 'The report', REPORT_KEYS)) {
+  const runtime =
+    typeof input === 'object' && input !== null && (input as { kind?: unknown }).kind === 'runtime';
+  const keys = runtime ? [...REPORT_KEYS, 'evidence'] : REPORT_KEYS;
+  if (!checkObject(issues, input, '', 'The report', keys)) {
     throw invalid(issues.diagnostics);
   }
   if (input['schemaVersion'] !== REPORT_SCHEMA_VERSION) {
@@ -85,12 +90,12 @@ export function readStaticReport(input: unknown): StaticReport {
       ],
     );
   }
-  if (input['kind'] !== 'static') {
+  if (input['kind'] !== 'static' && input['kind'] !== 'runtime') {
     issues.error(
       'UNSUPPORTED_REPORT_KIND',
       '/kind',
       `Report kind ${String(input['kind'])} is not supported by this version`,
-      'Only static reports from "nwise-kit analyze" can be read so far.',
+      'Reports are "static" (from analyze) or "runtime" (from the Vitest reporter).',
     );
   }
   checkIdentifier(issues, input['toolVersion'], '/toolVersion', 'The tool version');
@@ -104,11 +109,13 @@ export function readStaticReport(input: unknown): StaticReport {
 
   const fresh = recompute(input);
   const mismatches: Diagnostic[] = DERIVED_KEYS.filter(
-    (key) => canonicalJson(input[key]) !== canonicalJson(fresh[key]),
+    (key) =>
+      canonicalJson(input[key]) !==
+      canonicalJson((fresh as unknown as Record<string, unknown>)[key]),
   ).map((key) => ({
     code: 'REPORT_INCONSISTENT',
     severity: 'error',
-    message: `The stored "${key}" differs from the value recomputed from the embedded model and matrix`,
+    message: `The stored "${key}" differs from the value recomputed from the embedded inputs`,
     path: `/${key}`,
     hint: 'Regenerate the report instead of editing it.',
   }));
@@ -118,20 +125,24 @@ export function readStaticReport(input: unknown): StaticReport {
   return { ...fresh, durationMs: duration as number };
 }
 
-function recompute(input: Record<string, unknown>): StaticReport {
+function recompute(input: Record<string, unknown>): Report {
   const limits = within('/limits', () => resolveLimits(input['limits'] as Partial<Limits>));
   const model = within('/model', () => validateModel(input['model'], limits));
   within('/matrix', () => {
     checkCasesSatisfyConstraints(model, validateMatrix(input['matrix'], model));
   });
-  return within('/model', () =>
-    createStaticReport({
-      model: input['model'],
-      matrix: input['matrix'],
-      limits,
-      toolVersion: input['toolVersion'] as string,
-    }),
-  );
+  const options = {
+    model: input['model'],
+    matrix: input['matrix'],
+    limits,
+    toolVersion: input['toolVersion'] as string,
+  };
+  if (input['kind'] === 'runtime') {
+    return within('/evidence', () =>
+      createRuntimeReport({ ...options, evidence: input['evidence'] }),
+    );
+  }
+  return within('/model', () => createStaticReport(options));
 }
 
 /** Runs `step`, reporting embedded input errors as an invalid report at `prefix`. */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { NwiseKitError } from '../../../src/errors.js';
-import { readStaticReport } from '../../../src/reports/read-report.js';
+import { readReport } from '../../../src/reports/read-report.js';
 import { createStaticReport, formatReport } from '../../../src/reports/report.js';
 import type { StaticReport } from '../../../src/reports/report.js';
 import { golden, goldenRows } from '../../fixtures/models.js';
@@ -28,14 +28,14 @@ function at<T>(items: T[], index: number): T {
 
 function rejection(input: unknown): NwiseKitError {
   try {
-    readStaticReport(input);
+    readReport(input);
   } catch (error) {
     if (error instanceof NwiseKitError) {
       return error;
     }
     throw error;
   }
-  throw new Error('expected readStaticReport to throw');
+  throw new Error('expected readReport to throw');
 }
 
 function issues(input: unknown): [string, string | undefined][] {
@@ -44,9 +44,9 @@ function issues(input: unknown): [string, string | undefined][] {
   return error.diagnostics.map((d) => [d.code, d.path]);
 }
 
-describe('readStaticReport', () => {
+describe('readReport', () => {
   test('reads back a report unchanged', () => {
-    expect(readStaticReport(stored())).toEqual(report);
+    expect(readReport(stored())).toEqual(report);
   });
 
   test('rejects an edited percentage', () => {
@@ -105,9 +105,8 @@ describe('readStaticReport', () => {
 
   test('rejects unknown keys, other kinds and bad metadata', () => {
     expect(issues({ ...stored(), note: 'x' })).toEqual([['UNKNOWN_KEY', '/note']]);
-    expect(issues({ ...stored(), kind: 'runtime' })).toEqual([
-      ['UNSUPPORTED_REPORT_KIND', '/kind'],
-    ]);
+    expect(issues({ ...stored(), kind: 'other' })).toEqual([['UNSUPPORTED_REPORT_KIND', '/kind']]);
+    expect(issues({ ...stored(), kind: 'runtime' })).toEqual([['MISSING_KEY', '']]);
     expect(issues({ ...stored(), toolVersion: '' })).toEqual([
       ['INVALID_IDENTIFIER', '/toolVersion'],
     ]);

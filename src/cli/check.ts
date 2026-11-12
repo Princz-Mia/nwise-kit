@@ -1,6 +1,6 @@
 import type { MetricName } from '../reports/check.js';
 import { checkCoverage, METRIC_NAMES, parseThreshold } from '../reports/check.js';
-import { readStaticReport } from '../reports/read-report.js';
+import { readReport } from '../reports/read-report.js';
 import { neutralize, renderVerdict } from '../reports/terminal.js';
 import { invalidArguments, parseOptions, requireOption } from './args.js';
 import { EXIT } from './exit.js';
@@ -40,7 +40,7 @@ export function checkCommand(argv: readonly string[], io: CliIo): number {
   parseThreshold(threshold);
 
   const stored = readJsonFile(input);
-  const report = inFile(input, () => readStaticReport(stored));
+  const report = inFile(input, () => readReport(stored));
   const verdict = checkCoverage(report, metric, threshold);
   io.stdout(renderVerdict(verdict));
   return verdict.passed ? EXIT.ok : EXIT.unmet;
