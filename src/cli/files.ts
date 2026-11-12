@@ -36,6 +36,18 @@ export function readJsonFile(path: string): unknown {
   }
 }
 
+/** Prefixes input errors raised by `step` with the file they came from. */
+export function inFile<T>(path: string, step: () => T): T {
+  try {
+    return step();
+  } catch (error) {
+    if (error instanceof NwiseKitError) {
+      throw new NwiseKitError(error.code, `${path}: ${error.message}`, error.diagnostics);
+    }
+    throw error;
+  }
+}
+
 /** A comparable identity for a path, following links and ignoring case where the platform does. */
 function identity(path: string): string {
   let full = resolve(path);

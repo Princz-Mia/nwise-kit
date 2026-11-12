@@ -1,11 +1,10 @@
-import { NwiseKitError } from '../errors.js';
 import type { MetricName } from '../reports/check.js';
 import { checkCoverage, METRIC_NAMES, parseThreshold } from '../reports/check.js';
 import { readStaticReport } from '../reports/read-report.js';
 import { neutralize, renderVerdict } from '../reports/terminal.js';
 import { invalidArguments, parseOptions, requireOption } from './args.js';
 import { EXIT } from './exit.js';
-import { readJsonFile } from './files.js';
+import { inFile, readJsonFile } from './files.js';
 import type { CliIo } from './io.js';
 
 export const CHECK_HELP = `Usage: nwise-kit check --input <report> --min-coverage <percent> [--metric <name>]
@@ -41,15 +40,7 @@ export function checkCommand(argv: readonly string[], io: CliIo): number {
   parseThreshold(threshold);
 
   const stored = readJsonFile(input);
-  let report;
-  try {
-    report = readStaticReport(stored);
-  } catch (error) {
-    if (error instanceof NwiseKitError) {
-      throw new NwiseKitError(error.code, `${input}: ${error.message}`, error.diagnostics);
-    }
-    throw error;
-  }
+  const report = inFile(input, () => readStaticReport(stored));
   const verdict = checkCoverage(report, metric, threshold);
   io.stdout(renderVerdict(verdict));
   return verdict.passed ? EXIT.ok : EXIT.unmet;
