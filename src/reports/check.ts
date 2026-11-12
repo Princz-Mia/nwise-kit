@@ -1,6 +1,6 @@
 import { meetsThreshold, parseThreshold } from '../coverage/threshold.js';
 import { NwiseKitError } from '../errors.js';
-import type { StaticReport } from './report.js';
+import type { Report } from './report.js';
 
 export { meetsThreshold, parseThreshold } from '../coverage/threshold.js';
 
@@ -26,12 +26,27 @@ export interface CoverageVerdict {
  * that the report does not have is an error, never a pass or a zero.
  */
 export function checkCoverage(
-  report: StaticReport,
+  report: Report,
   metric: MetricName,
   threshold: string | number,
 ): CoverageVerdict {
   const text = String(threshold);
   const thousandths = parseThreshold(text);
+  if (report.kind === 'runtime' && !report.runtimeComplete) {
+    throw new NwiseKitError(
+      'RUNTIME_INCOMPLETE',
+      `Run ${report.runId} is incomplete, so no coverage gate can pass on it`,
+      [
+        {
+          code: 'RUNTIME_INCOMPLETE',
+          severity: 'error',
+          message: 'The run that produced this report did not finish cleanly',
+          path: '/runtimeComplete',
+          hint: 'See the report diagnostics, fix the run and test again.',
+        },
+      ],
+    );
+  }
   const value = report.metrics[metric];
   if (value === null) {
     throw new NwiseKitError(

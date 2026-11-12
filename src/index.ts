@@ -24,13 +24,21 @@ export type {
   StrengthCoverage,
 } from './coverage/analyze.js';
 export type { Interaction, Metric } from './coverage/coverage.js';
-export { createStaticReport, formatReport, REPORT_SCHEMA_VERSION } from './reports/report.js';
+export {
+  createRuntimeReport,
+  createStaticReport,
+  formatReport,
+  REPORT_SCHEMA_VERSION,
+} from './reports/report.js';
 export type {
+  CreateRuntimeReportOptions,
   CreateStaticReportOptions,
+  Report,
+  RuntimeReport,
   ReportInteraction,
   StaticReport,
 } from './reports/report.js';
-export { readStaticReport } from './reports/read-report.js';
+export { readReport } from './reports/read-report.js';
 export { checkCoverage, meetsThreshold, METRIC_NAMES, parseThreshold } from './reports/check.js';
 export type { CoverageVerdict, MetricName } from './reports/check.js';
 export { ALGORITHM, suggestCases } from './suggestions/greedy.js';

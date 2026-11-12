@@ -3,7 +3,7 @@ import type { Diagnostic } from '../errors.js';
 import type { DomainValue } from '../model/types.js';
 import type { StopReason, SuggestionResult } from '../suggestions/greedy.js';
 import type { CoverageVerdict } from './check.js';
-import type { ReportInteraction, StaticReport } from './report.js';
+import type { Report, ReportInteraction } from './report.js';
 
 /** How many missing interactions the summary lists before truncating. */
 export const MISSING_PREVIEW = 10;
@@ -46,14 +46,15 @@ const KIND_OF_INTERACTION: Readonly<Record<number, string>> = {
   3: 'triples',
 };
 
-/** The human-readable summary of a static report, for standard output. */
-export function renderSummary(report: StaticReport, preview = MISSING_PREVIEW): string {
+/** The human-readable summary of a static or runtime report, for standard output. */
+export function renderSummary(report: Report, preview = MISSING_PREVIEW): string {
   const { metrics, universe, matrix } = report;
   const unit = KIND_OF_INTERACTION[report.strength] ?? 'interactions';
   const lines = [
     `Model ${neutralize(report.model.id)}, strength ${String(report.strength)}`,
     `Matrix: ${String(matrix.cases.length)} case${matrix.cases.length === 1 ? '' : 's'}, hash ${report.matrixHash.slice(0, 12)}`,
     `Analysis: complete; ${String(universe.validConfigurations)} of ${String(universe.rawConfigurations)} configurations valid, ${String(universe.interactions)} valid ${unit}`,
+    ...runLines(report),
     '',
     'Coverage',
     `  declared  ${formatMetric(metrics.declared)}`,
@@ -64,11 +65,16 @@ export function renderSummary(report: StaticReport, preview = MISSING_PREVIEW): 
       .map((p) => `${String(p.strength)}-way ${formatMetric(p.declared)}`)
       .join(', ')}`,
   ];
-  const missing = report.missing.declared;
+  // Show the gaps of the strongest metric the report has.
+  const [label, missing] =
+    report.missing.passed !== null
+      ? ['passed', report.missing.passed]
+      : (['declared', report.missing.declared] as const);
+  const scope = report.kind === 'runtime' ? ` for ${label} coverage` : '';
   if (missing.length === 0) {
-    lines.push('', `No valid ${unit} are missing.`);
+    lines.push('', `No valid ${unit} are missing${scope}.`);
   } else {
-    lines.push('', `Missing ${unit} (${String(missing.length)}):`);
+    lines.push('', `Missing ${unit}${scope} (${String(missing.length)}):`);
     for (const interaction of missing.slice(0, preview)) {
       lines.push(`  ${formatInteraction(interaction)}`);
     }
@@ -79,6 +85,29 @@ export function renderSummary(report: StaticReport, preview = MISSING_PREVIEW): 
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+function runLines(report: Report): string[] {
+  if (report.kind !== 'runtime') {
+    return [];
+  }
+  const tests = report.evidence.tests.length;
+  const state = report.runtimeComplete ? 'complete' : 'INCOMPLETE, runtime metrics unavailable';
+  const lines = [
+    `Run ${neutralize(report.runId)}: ${state}; ${String(tests)} test${tests === 1 ? '' : 's'} registered`,
+  ];
+  if (report.filters !== null) {
+    const parts = [
+      ...(report.filters.testNamePattern === null
+        ? []
+        : [`name pattern ${neutralize(report.filters.testNamePattern)}`]),
+      ...report.filters.files.map((file) => neutralize(file)),
+    ];
+    lines.push(
+      `Filtered run: ${parts.join(', ') || 'filters applied'}; the full matrix stays the denominator`,
+    );
+  }
+  return lines;
 }
 
 /** One diagnostic as indented lines, for standard error. */
