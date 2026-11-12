@@ -48,6 +48,8 @@ export {
   SUGGESTIONS_SCHEMA_VERSION,
 } from './suggestions/file.js';
 export type { SuggestionsFile } from './suggestions/file.js';
+export { analyzeRun } from './evidence/analyze-run.js';
+export type { AnalyzeRunOptions, RuntimeAnalysis } from './evidence/analyze-run.js';
 export { TEST_OUTCOMES } from './evidence/types.js';
 export type {
   RunEvidence,
