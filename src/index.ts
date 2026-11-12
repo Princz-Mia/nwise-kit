@@ -48,3 +48,11 @@ export {
   SUGGESTIONS_SCHEMA_VERSION,
 } from './suggestions/file.js';
 export type { SuggestionsFile } from './suggestions/file.js';
+export { TEST_OUTCOMES } from './evidence/types.js';
+export type {
+  RunEvidence,
+  RunFilters,
+  SourceLocation,
+  TestEvidence,
+  TestOutcome,
+} from './evidence/types.js';
