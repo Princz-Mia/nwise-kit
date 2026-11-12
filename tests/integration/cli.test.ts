@@ -50,6 +50,29 @@ describe('the built nwise-kit binary', () => {
     expect(cli('check', '--input', out, '--min-coverage', '50').code).toBe(2);
   });
 
+  test('suggests cases and honours --require-target', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nwise-kit-bin-'));
+    const args = [
+      '--model',
+      'examples/discount/model.json',
+      '--cases',
+      'examples/discount/cases.json',
+    ];
+    const full = cli('suggest', ...args, '--out', join(dir, 'all.json'));
+    expect(full.code).toBe(0);
+    expect(full.stdout).toContain('Stopped because the target was reached.');
+    const partial = cli(
+      'suggest',
+      ...args,
+      '--out',
+      join(dir, 'one.json'),
+      '--max-new-cases',
+      '1',
+      '--require-target',
+    );
+    expect(partial.code).toBe(1);
+  });
+
   test('exits 2 for an unknown option', () => {
     const result = cli('analyze', '--bogus');
     expect(result.code).toBe(2);
