@@ -9,8 +9,8 @@ import type { Strength } from '../model/types.js';
 import { compareCodeUnits } from '../model/types.js';
 import { validateModel } from '../model/validate-model.js';
 import type { Interaction, Metric } from './coverage.js';
-import { CoverageSet } from './coverage.js';
-import type { Level, UniverseOptions } from './universe.js';
+import { measure } from './measure.js';
+import type { UniverseOptions } from './universe.js';
 import { buildUniverse } from './universe.js';
 
 export interface AnalyzeMatrixOptions {
@@ -86,18 +86,10 @@ export function analyzeMatrixWith(
   checkCasesSatisfyConstraints(model, cases);
   const universe = buildUniverse(model, limits, universeOptions);
 
-  const declared = new CoverageSet(universe);
-  for (const testCase of cases) {
-    declared.add(testCase.indices);
-  }
-  const groupMetrics = declared.groupMetrics();
-  const coverageAt = (level: Level): Metric => {
-    const covered = new CoverageSet(universe, level);
-    for (const testCase of cases) {
-      covered.add(testCase.indices);
-    }
-    return covered.metric();
-  };
+  const declared = measure(
+    universe,
+    cases.map((c) => c.indices),
+  );
 
   return {
     kind: 'static',
@@ -111,20 +103,20 @@ export function analyzeMatrixWith(
       validConfigurations: universe.validConfigurations,
       interactions: universe.interactions,
     },
-    metrics: { declared: declared.metric(), observed: null, passed: null },
-    profile: universe.levels.map((level) => ({
+    metrics: { declared: declared.metric, observed: null, passed: null },
+    profile: universe.levels.map((level, l) => ({
       strength: level.strength,
-      declared: level === universe.levels.at(-1) ? declared.metric() : coverageAt(level),
+      declared: declared.profile[l] as Metric,
       observed: null,
       passed: null,
     })),
     groups: universe.groups.map((group, g) => ({
       parameters: group.parameters.map((p) => model.parameters[p]?.name ?? ''),
-      declared: groupMetrics[g] ?? { covered: 0, total: 0, percentage: 0 },
+      declared: declared.groups[g] as Metric,
       observed: null,
       passed: null,
     })),
-    missing: { declared: declared.missing() },
+    missing: { declared: declared.missing },
     diagnostics: [...universe.diagnostics, ...redundantConfigurations(cases)],
     limits,
     durationMs: performance.now() - started,
