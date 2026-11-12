@@ -33,3 +33,12 @@ export type {
 export { readStaticReport } from './reports/read-report.js';
 export { checkCoverage, meetsThreshold, METRIC_NAMES, parseThreshold } from './reports/check.js';
 export type { CoverageVerdict, MetricName } from './reports/check.js';
+export { ALGORITHM, suggestCases } from './suggestions/greedy.js';
+export type {
+  Basis,
+  Recommendation,
+  RecommendationKind,
+  StopReason,
+  SuggestCasesOptions,
+  SuggestionResult,
+} from './suggestions/greedy.js';
