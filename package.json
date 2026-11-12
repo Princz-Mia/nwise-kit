@@ -18,6 +18,10 @@
       "types": "./dist/vitest/index.d.ts",
       "import": "./dist/vitest/index.js"
     },
+    "./reporter": {
+      "types": "./dist/reporter/index.d.ts",
+      "import": "./dist/reporter/index.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
