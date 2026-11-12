@@ -42,3 +42,9 @@ export type {
   SuggestCasesOptions,
   SuggestionResult,
 } from './suggestions/greedy.js';
+export {
+  createSuggestionsFile,
+  formatSuggestions,
+  SUGGESTIONS_SCHEMA_VERSION,
+} from './suggestions/file.js';
+export type { SuggestionsFile } from './suggestions/file.js';
