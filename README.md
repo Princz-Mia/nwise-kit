@@ -8,10 +8,9 @@ dimensions) an existing test suite covers, lists the missing
 interactions, and recommends extra configurations to close the gaps.
 
 > **Status:** under development. Nothing has been published to npm yet.
-> From a checkout of this repository, the `analyze` and `check` commands
-> and the library work today. Recommendations (`suggest`), the Vitest
-> adapter for observed and passed coverage, and HTML reports are being
-> built.
+> From a checkout of this repository, the `analyze`, `check` and `suggest`
+> commands and the library work today. The Vitest adapter for observed and
+> passed coverage and HTML reports are being built.
 
 ## The problem
 
@@ -167,14 +166,31 @@ report from `analyze`, pass `--metric declared`. A met threshold says
 nothing about whether the tests themselves passed, so keep your test
 runner's exit code as a separate CI step.
 
+`suggest` recommends configurations to add, without touching your files
+or tests:
+
+```bash
+node dist/cli/index.js suggest --model model.json --cases cases.json --out suggestions.json --target 100 --max-new-cases 10
+```
+
+Each step picks the valid configuration that covers the most interactions
+still missing, so the first recommendations matter most. On the worked
+example above it recommends `001`, `010` and `110`, adding 2, 2 and 1 pairs.
+The result is deterministic but not guaranteed to be the smallest possible
+set, since finding that is NP-hard. Projected coverage is hypothetical: it
+counts once you have added the cases, written their assertions and run
+them. A search that stops early, at `--max-new-cases` or at the work limit,
+still exits 0 and says why; add `--require-target` to make an unmet target
+exit 1.
+
 | Exit code | Meaning                                                                                |
 | --------- | -------------------------------------------------------------------------------------- |
 | 0         | Success; any requested gate passed                                                     |
-| 1         | A coverage gate was not met                                                            |
+| 1         | A coverage gate, or a target required with `--require-target`, was not met             |
 | 2         | Invalid arguments, model, matrix or report, an unavailable metric, unsatisfiable model |
 | 3         | Incomplete analysis, a resource limit, an I/O failure or an internal error             |
 
-Models, matrices and reports have JSON Schemas in [schemas/](schemas/),
+Models, matrices, reports and suggestions have JSON Schemas in [schemas/](schemas/),
 which editors can use for validation and completion. The tool checks more
 than a schema can, such as references to unknown parameters.
 

@@ -1,6 +1,7 @@
 import type { Metric } from '../coverage/coverage.js';
 import type { Diagnostic } from '../errors.js';
 import type { DomainValue } from '../model/types.js';
+import type { StopReason, SuggestionResult } from '../suggestions/greedy.js';
 import type { CoverageVerdict } from './check.js';
 import type { ReportInteraction, StaticReport } from './report.js';
 
@@ -113,4 +114,44 @@ export function renderVerdict(verdict: CoverageVerdict): string {
   const relation = verdict.passed ? 'meets' : 'is below';
   const counts = `${String(verdict.covered)}/${String(verdict.total)} (${formatGatePercentage(verdict.covered, verdict.total)})`;
   return `${outcome}: ${verdict.metric} coverage ${counts} ${relation} the ${verdict.threshold}% threshold\n`;
+}
+
+const STOP_REASONS: Readonly<Record<StopReason, string>> = {
+  'target-reached': 'the target was reached',
+  'case-budget': 'the case budget ran out before the target',
+  'work-budget': 'the work budget ran out before the target',
+};
+
+/** The human-readable summary of a suggestion search, for standard output. */
+export function renderSuggestions(result: SuggestionResult): string {
+  const lines = [
+    `Model ${neutralize(result.modelId)}, strength ${String(result.strength)}, basis ${result.basis}`,
+    `Baseline: ${formatMetric(result.baseline)}`,
+    `Target: ${result.target}%, at most ${String(result.maxNewCases)} new case${result.maxNewCases === 1 ? '' : 's'}`,
+    '',
+  ];
+  if (result.recommendations.length === 0) {
+    lines.push('No recommendations.');
+  } else {
+    lines.push('Recommendations (projected: they count once the tests exist and pass):');
+    result.recommendations.forEach((r, i) => {
+      const values = Object.entries(r.values)
+        .map(([name, value]) => `${neutralize(name)}=${neutralize(String(value))}`)
+        .join(', ');
+      const matched =
+        r.matchedCaseIds.length === 0
+          ? ''
+          : ` (existing: ${r.matchedCaseIds.map((id) => neutralize(id)).join(', ')})`;
+      lines.push(
+        `  ${String(i + 1)}. ${r.kind}${matched}: ${values}`,
+        `     +${String(r.gain)}, projected ${formatMetric(r.projected)}`,
+      );
+    });
+  }
+  lines.push('', `Stopped because ${STOP_REASONS[result.stopReason]}.`);
+  lines.push(`Projected coverage: ${formatMetric(result.projected)}`);
+  if (result.remaining.length > 0) {
+    lines.push(`Still missing: ${String(result.remaining.length)}`);
+  }
+  return `${lines.join('\n')}\n`;
 }

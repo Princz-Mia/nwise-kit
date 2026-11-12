@@ -1,12 +1,11 @@
 import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
-import { NwiseKitError } from '../errors.js';
 import { validateMatrix } from '../model/cases.js';
 import { validateModel } from '../model/validate-model.js';
 import { createStaticReport, formatReport } from '../reports/report.js';
 import { neutralize, renderDiagnostic, renderSummary } from '../reports/terminal.js';
 import { parseOptions, requireOption } from './args.js';
 import { EXIT } from './exit.js';
-import { checkOutputPath, readJsonFile, writeOutputFile } from './files.js';
+import { checkOutputPath, inFile, readJsonFile, writeOutputFile } from './files.js';
 import type { CliIo } from './io.js';
 
 export const ANALYZE_HELP = `Usage: nwise-kit analyze --model <file> --cases <file> [--json <file>] [--force]
@@ -58,16 +57,4 @@ export function analyzeCommand(argv: readonly string[], io: CliIo): number {
     io.stdout(`\nReport written to ${neutralize(options.json)}\n`);
   }
   return EXIT.ok;
-}
-
-/** Prefixes input errors with the file they came from. */
-function inFile<T>(path: string, step: () => T): T {
-  try {
-    return step();
-  } catch (error) {
-    if (error instanceof NwiseKitError) {
-      throw new NwiseKitError(error.code, `${path}: ${error.message}`, error.diagnostics);
-    }
-    throw error;
-  }
 }
