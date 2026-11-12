@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "modelId": "lifecycle",
+  "cases": [
+    {
+      "id": "passes",
+      "values": {
+        "os": "Windows",
+        "cpu": "Intel",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "fails-before",
+      "values": {
+        "os": "Windows",
+        "cpu": "Intel",
+        "protocol": "IPv6"
+      }
+    },
+    {
+      "id": "fails-after",
+      "values": {
+        "os": "Windows",
+        "cpu": "AMD",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "skipped",
+      "values": {
+        "os": "Windows",
+        "cpu": "AMD",
+        "protocol": "IPv6"
+      }
+    },
+    {
+      "id": "todo",
+      "values": {
+        "os": "Linux",
+        "cpu": "Intel",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "retry-recovers",
+      "values": {
+        "os": "Linux",
+        "cpu": "Intel",
+        "protocol": "IPv6"
+      }
+    },
+    {
+      "id": "first-attempt-only",
+      "values": {
+        "os": "Linux",
+        "cpu": "AMD",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "late-cover",
+      "values": {
+        "os": "Linux",
+        "cpu": "AMD",
+        "protocol": "IPv6"
+      }
+    },
+    {
+      "id": "teardown-fails",
+      "values": {
+        "os": "Windows",
+        "cpu": "Intel",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "concurrent-a",
+      "values": {
+        "os": "Windows",
+        "cpu": "Intel",
+        "protocol": "IPv6"
+      }
+    },
+    {
+      "id": "concurrent-b",
+      "values": {
+        "os": "Windows",
+        "cpu": "AMD",
+        "protocol": "IPv4"
+      }
+    },
+    {
+      "id": "unregistered",
+      "values": {
+        "os": "Windows",
+        "cpu": "AMD",
+        "protocol": "IPv6"
+      }
+    }
+  ]
+}
