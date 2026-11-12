@@ -18,12 +18,14 @@ export type ErrorCode =
   | 'INVALID_MATRIX'
   | 'INVALID_LIMITS'
   | 'INVALID_REPORT'
+  | 'INVALID_EVIDENCE'
   | 'INVALID_ARGUMENTS'
   | 'METRIC_UNAVAILABLE'
   | 'UNSUPPORTED_SCHEMA_VERSION'
   | 'UNSATISFIABLE_MODEL'
   | 'LIMIT_EXCEEDED'
-  | 'ANALYSIS_INCOMPLETE';
+  | 'ANALYSIS_INCOMPLETE'
+  | 'RUNTIME_INCOMPLETE';
 
 /**
  * Thrown for invalid inputs and for analyses that cannot finish exactly.
