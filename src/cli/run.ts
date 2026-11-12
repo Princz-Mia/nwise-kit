@@ -1,6 +1,7 @@
 import { neutralize } from '../reports/terminal.js';
 import { analyzeCommand } from './analyze.js';
 import { invalidArguments } from './args.js';
+import { checkCommand } from './check.js';
 import { EXIT, exitCodeFor, renderError } from './exit.js';
 import type { CliIo } from './io.js';
 
@@ -8,6 +9,7 @@ type Command = (argv: readonly string[], io: CliIo) => number;
 
 const COMMANDS: Readonly<Record<string, Command>> = {
   analyze: analyzeCommand,
+  check: checkCommand,
 };
 
 export const USAGE = `Usage: nwise-kit <command> [options]
@@ -16,6 +18,7 @@ Combinatorial coverage for the tests you already have.
 
 Commands:
   analyze   Measure the coverage of an existing test matrix
+  check     Check a report's coverage against a threshold
 
 Run "nwise-kit <command> --help" for a command's options.
 

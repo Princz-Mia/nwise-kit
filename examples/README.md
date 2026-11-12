@@ -49,17 +49,9 @@ pairs; the gaps include every `US` pair with `guest` or `admin`.
 
 ## Running them
 
-The command-line interface is not available yet. From a checkout of this
-repository the library can analyse an example directly:
+From a checkout of this repository, after `npm ci` and `npm run build`:
 
-```ts
-import { readFileSync } from 'node:fs';
-import { analyzeMatrix, parseJson } from './src/index.js';
-
-const model = parseJson(readFileSync('examples/discount/model.json', 'utf8'));
-const matrix = parseJson(readFileSync('examples/discount/cases.json', 'utf8')) as {
-  cases: unknown;
-};
-const analysis = analyzeMatrix({ model, cases: matrix.cases });
-console.log(analysis.profile, analysis.missing.declared);
+```bash
+node dist/cli/index.js analyze --model examples/discount/model.json --cases examples/discount/cases.json
+node dist/cli/index.js analyze --model examples/os-cpu-protocol/model.json --cases examples/os-cpu-protocol/cases.pairwise.json
 ```
