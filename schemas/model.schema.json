@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nwise-kit:schema:model:1",
+  "title": "NwiseKit model",
+  "description": "Parameters with finite domains, constraints that exclude impossible combinations, and the interaction strength to measure. The tool additionally checks that constraints only reference known parameters and in-domain values, limits nesting depth and size, and rejects integers outside the safe range.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "strength", "parameters"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "$ref": "#/$defs/identifier" },
+    "strength": { "enum": [2, 3] },
+    "parameters": {
+      "type": "object",
+      "minProperties": 2,
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": { "$ref": "#/$defs/domain" }
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constraint" }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "minLength": 1 },
+    "value": { "type": ["string", "number", "boolean"] },
+    "domain": {
+      "description": "A non-empty list of distinct values of one type.",
+      "oneOf": [
+        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "number" } },
+        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "boolean" } }
+      ]
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "rule": { "$ref": "#/$defs/expression" }
+      }
+    },
+    "expression": {
+      "description": "An object with exactly one operator.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["eq"],
+          "properties": {
+            "eq": {
+              "type": "array",
+              "prefixItems": [{ "$ref": "#/$defs/identifier" }, { "$ref": "#/$defs/value" }],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["not"],
+          "properties": { "not": { "$ref": "#/$defs/expression" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["and"],
+          "properties": {
+            "and": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/expression" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["or"],
+          "properties": {
+            "or": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/expression" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["implies"],
+          "properties": {
+            "implies": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/expression" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

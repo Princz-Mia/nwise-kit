@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nwise-kit:schema:matrix:1",
+  "title": "NwiseKit matrix",
+  "description": "Existing test cases as complete parameter assignments for one model. The tool additionally checks that every case assigns each model parameter exactly once with a value from its domain and satisfies every constraint.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "modelId", "cases"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "modelId": { "type": "string", "minLength": 1 },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "values"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "values": {
+            "type": "object",
+            "additionalProperties": { "type": ["string", "number", "boolean"] }
+          }
+        }
+      }
+    }
+  }
+}
