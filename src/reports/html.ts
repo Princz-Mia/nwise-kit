@@ -46,111 +46,8 @@ function interactionText(interaction: ReportInteraction): string {
   return interaction.parameters.map((p, i) => `${p}=${String(interaction.values[i])}`).join(', ');
 }
 
-/**
- * Renders a report, and optionally suggestions for the same matrix, as a
- * single self-contained HTML page. It needs no network: styles and
- * scripts are inline and a content security policy blocks every
- * request. All user-supplied text is escaped.
- */
-export function renderHtml(report: Report, suggestions?: SuggestionsFile): string {
-  const runtime = report.kind === 'runtime';
-  const metrics = (['declared', 'observed', 'passed'] as const).map(
-    (name) => [name, report.metrics[name]] as const,
-  );
-  const missing = Object.fromEntries(
-    (['declared', 'observed', 'passed'] as const).map((name) => {
-      const list = report.missing[name];
-      return [
-        name,
-        list === null
-          ? null
-          : { total: list.length, items: list.slice(0, HTML_MISSING_LIMIT).map(interactionText) },
-      ];
-    }),
-  );
-  // Parameters, values and outcomes are embedded as arrays in a fixed order,
-  // so the page never looks anything up by a user-chosen name such as
-  // "constructor" or "__proto__".
-  const names = Object.keys(report.model.parameters).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const outcomes = new Map(
-    runtime
-      ? report.evidence.tests.map((t) => [
-          t.caseId,
-          { outcome: t.outcome, attempts: t.attempts, checkpoints: t.checkpointAttempts },
-        ])
-      : [],
-  );
-  const data = {
-    parameters: names.map((name) => ({ name, values: report.model.parameters[name] ?? [] })),
-    cases: report.matrix.cases.map((c) => ({
-      id: c.id,
-      values: names.map((name) => c.values[name] ?? null),
-      run: outcomes.get(c.id) ?? null,
-    })),
-    missing,
-    limit: HTML_MISSING_LIMIT,
-  };
-
-  const groupRows = report.groups
-    .map(
-      (g) =>
-        `<tr>${cell(g.parameters.join(' × '))}${cell(metricText(g.declared))}${cell(metricText(g.observed))}${cell(metricText(g.passed))}</tr>`,
-    )
-    .join('\n');
-  const profileRows = report.profile
-    .map(
-      (p) =>
-        `<tr>${cell(`${String(p.strength)}-way`)}${cell(metricText(p.declared))}${cell(metricText(p.observed))}${cell(metricText(p.passed))}</tr>`,
-    )
-    .join('\n');
-  const diagnosticRows = report.diagnostics
-    .map(
-      (d) =>
-        `<tr>${cell(d.severity, ` class="${d.severity}"`)}${cell(d.code)}${cell(d.caseIds?.join(', ') ?? d.path ?? '')}${cell(d.message)}</tr>`,
-    )
-    .join('\n');
-
-  const run = runtime
-    ? `<p>Run <code>${escapeHtml(report.runId)}</code>: ${
-        report.runtimeComplete
-          ? 'complete'
-          : '<strong class="error">incomplete — observed and passed coverage are unavailable</strong>'
-      }; ${String(report.evidence.tests.length)} tests registered.${
-        report.filters === null
-          ? ''
-          : ` Filtered run (${escapeHtml(report.filters.testNamePattern ?? 'files')}); the full matrix stays the denominator.`
-      }</p>`
-    : '<p>Static analysis: observed and passed coverage need a test run.</p>';
-
-  const recommendations =
-    suggestions === undefined
-      ? ''
-      : `<section>
-<h2>Recommendations <small>(projected, ${escapeHtml(suggestions.basis)} basis)</small></h2>
-<p>Projected coverage counts only once the cases exist, have assertions and run. Stopped because ${escapeHtml(suggestions.stopReason.replace('-', ' '))}; target ${escapeHtml(suggestions.target)}% ${suggestions.targetReached ? 'reached' : 'not reached'}.</p>
-<table><thead><tr><th>#</th><th>Kind</th><th>Configuration</th><th>Gain</th><th>Projected</th></tr></thead><tbody>
-${suggestions.recommendations
-  .map(
-    (r, i) =>
-      `<tr>${cell(String(i + 1))}${cell(r.kind + (r.matchedCaseIds.length > 0 ? ` (${r.matchedCaseIds.join(', ')})` : ''))}${cell(
-        Object.entries(r.values)
-          .map(([k, v]) => `${k}=${String(v)}`)
-          .join(', '),
-      )}${cell(`+${String(r.gain)}`)}${cell(metricText(r.projected))}</tr>`,
-  )
-  .join('\n')}
-</tbody></table>
-</section>`;
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
-<title>${escapeHtml(report.model.id)} coverage</title>
-<style>
-:root { --fg: #1d1d1f; --bg: #ffffff; --muted: #6e6e73; --line: #d2d2d7; --accent: #0b57d0; --error: #b3261e; --warning: #8a5300; }
+/** The page styles; light and dark follow the system setting. */
+const PAGE_STYLE = `:root { --fg: #1d1d1f; --bg: #ffffff; --muted: #6e6e73; --line: #d2d2d7; --accent: #0b57d0; --error: #b3261e; --warning: #8a5300; }
 @media (prefers-color-scheme: dark) { :root { --fg: #e8e8ed; --bg: #161618; --muted: #a1a1a6; --line: #3a3a3c; --accent: #8ab4f8; --error: #f2b8b5; --warning: #f6c66b; } }
 * { box-sizing: border-box; }
 body { margin: 0 auto; max-width: 1100px; padding: 24px 16px 64px; font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
@@ -161,55 +58,13 @@ th { font-weight: 600; color: var(--muted); } code { font: 13px ui-monospace, mo
 .metric { border: 1px solid var(--line); border-radius: 8px; padding: 12px; } .metric b { display: block; font-size: 20px; }
 .error { color: var(--error); } .warning { color: var(--warning); } .muted { color: var(--muted); }
 input, select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .scroll { overflow-x: auto; }
-</style>
-</head>
-<body>
-<header>
-<h1>${escapeHtml(report.model.id)}</h1>
-<p class="muted">Strength ${String(report.strength)} · ${String(report.matrix.cases.length)} cases · ${String(report.universe.validConfigurations)} of ${String(report.universe.rawConfigurations)} configurations valid · ${String(report.universe.interactions)} valid interactions · matrix <code>${escapeHtml(report.matrixHash.slice(0, 12))}</code> · nwise-kit ${escapeHtml(report.toolVersion)}</p>
-${run}
-</header>
-<section>
-<h2>Coverage</h2>
-<div class="metrics">
-${metrics.map(([name, metric]) => `<div class="metric">${escapeHtml(name)}<b>${escapeHtml(metricText(metric))}</b></div>`).join('\n')}
-</div>
-<div class="scroll"><table><thead><tr><th>Strength</th><th>Declared</th><th>Observed</th><th>Passed</th></tr></thead><tbody>
-${profileRows}
-</tbody></table></div>
-</section>
-<section>
-<h2>By parameter group</h2>
-<div class="scroll"><table><thead><tr><th>Group</th><th>Declared</th><th>Observed</th><th>Passed</th></tr></thead><tbody>
-${groupRows}
-</tbody></table></div>
-</section>
-<section>
-<h2>Missing interactions</h2>
-<div class="controls">
-<label>Metric <select id="metric"></select></label>
-<label>Filter <input id="filter" type="search" placeholder="e.g. role=guest"></label>
-<span id="count" class="muted"></span>
-</div>
-<div class="scroll"><table><tbody id="missing"></tbody></table></div>
-</section>
-<section>
-<h2>Find cases for an interaction</h2>
-<p class="muted">Choose values; the cases that contain all of them are listed with their outcome in the run.</p>
-<div class="controls" id="pickers"></div>
-<div class="scroll"><table><thead><tr><th>Case</th><th>Values</th><th>Outcome</th></tr></thead><tbody id="cases"></tbody></table></div>
-</section>
-${recommendations}
-<section>
-<h2>Diagnostics</h2>
-<div class="scroll"><table><thead><tr><th>Severity</th><th>Code</th><th>Where</th><th>Message</th></tr></thead><tbody>
-${diagnosticRows || '<tr><td colspan="4" class="muted">None</td></tr>'}
-</tbody></table></div>
-</section>
-<script type="application/json" id="data">${embedJson(data)}</script>
-<script>
-(function () {
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .scroll { overflow-x: auto; }`;
+
+/**
+ * The page script. It reads the embedded JSON, fills the lists and wires
+ * the filter and the pickers. It only creates text nodes, never markup.
+ */
+const PAGE_SCRIPT = `(function () {
   var data = JSON.parse(document.getElementById('data').textContent);
   function el(tag, text, cls) { var e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
   var metric = document.getElementById('metric'), filter = document.getElementById('filter');
@@ -259,7 +114,171 @@ ${diagnosticRows || '<tr><td colspan="4" class="muted">None</td></tr>'}
     });
   }
   showCases();
-})();
+})();`;
+
+/** The data the page script works on, embedded as JSON. */
+function pageData(report: Report): unknown {
+  const runtime = report.kind === 'runtime';
+  const missing = Object.fromEntries(
+    (['declared', 'observed', 'passed'] as const).map((name) => {
+      const list = report.missing[name];
+      return [
+        name,
+        list === null
+          ? null
+          : { total: list.length, items: list.slice(0, HTML_MISSING_LIMIT).map(interactionText) },
+      ];
+    }),
+  );
+  // Parameters, values and outcomes are embedded as arrays in a fixed order,
+  // so the page never looks anything up by a user-chosen name such as
+  // "constructor" or "__proto__".
+  const names = Object.keys(report.model.parameters).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const outcomes = new Map(
+    runtime
+      ? report.evidence.tests.map((t) => [
+          t.caseId,
+          { outcome: t.outcome, attempts: t.attempts, checkpoints: t.checkpointAttempts },
+        ])
+      : [],
+  );
+  const data = {
+    parameters: names.map((name) => ({ name, values: report.model.parameters[name] ?? [] })),
+    cases: report.matrix.cases.map((c) => ({
+      id: c.id,
+      values: names.map((name) => c.values[name] ?? null),
+      run: outcomes.get(c.id) ?? null,
+    })),
+    missing,
+    limit: HTML_MISSING_LIMIT,
+  };
+  return data;
+}
+
+/** One paragraph saying what kind of report this is and whether the run completed. */
+function runParagraph(report: Report): string {
+  const runtime = report.kind === 'runtime';
+  return runtime
+    ? `<p>Run <code>${escapeHtml(report.runId)}</code>: ${
+        report.runtimeComplete
+          ? 'complete'
+          : '<strong class="error">incomplete — observed and passed coverage are unavailable</strong>'
+      }; ${String(report.evidence.tests.length)} tests registered.${
+        report.filters === null
+          ? ''
+          : ` Filtered run (${escapeHtml(report.filters.testNamePattern ?? 'files')}); the full matrix stays the denominator.`
+      }</p>`
+    : '<p>Static analysis: observed and passed coverage need a test run.</p>';
+}
+
+/** The recommendations section, or nothing when no suggestions were given. */
+function recommendationsSection(suggestions: SuggestionsFile | undefined): string {
+  return suggestions === undefined
+    ? ''
+    : `<section>
+<h2>Recommendations <small>(projected, ${escapeHtml(suggestions.basis)} basis)</small></h2>
+<p>Projected coverage counts only once the cases exist, have assertions and run. Stopped because ${escapeHtml(suggestions.stopReason.replace('-', ' '))}; target ${escapeHtml(suggestions.target)}% ${suggestions.targetReached ? 'reached' : 'not reached'}.</p>
+<table><thead><tr><th>#</th><th>Kind</th><th>Configuration</th><th>Gain</th><th>Projected</th></tr></thead><tbody>
+${suggestions.recommendations
+  .map(
+    (r, i) =>
+      `<tr>${cell(String(i + 1))}${cell(r.kind + (r.matchedCaseIds.length > 0 ? ` (${r.matchedCaseIds.join(', ')})` : ''))}${cell(
+        Object.entries(r.values)
+          .map(([k, v]) => `${k}=${String(v)}`)
+          .join(', '),
+      )}${cell(`+${String(r.gain)}`)}${cell(metricText(r.projected))}</tr>`,
+  )
+  .join('\n')}
+</tbody></table>
+</section>`;
+}
+
+/**
+ * Renders a report, and optionally suggestions for the same matrix, as a
+ * single self-contained HTML page. It needs no network: styles and
+ * scripts are inline and a content security policy blocks every
+ * request. All user-supplied text is escaped.
+ */
+export function renderHtml(report: Report, suggestions?: SuggestionsFile): string {
+  const metrics = (['declared', 'observed', 'passed'] as const).map(
+    (name) => [name, report.metrics[name]] as const,
+  );
+  const groupRows = report.groups
+    .map(
+      (g) =>
+        `<tr>${cell(g.parameters.join(' × '))}${cell(metricText(g.declared))}${cell(metricText(g.observed))}${cell(metricText(g.passed))}</tr>`,
+    )
+    .join('\n');
+  const profileRows = report.profile
+    .map(
+      (p) =>
+        `<tr>${cell(`${String(p.strength)}-way`)}${cell(metricText(p.declared))}${cell(metricText(p.observed))}${cell(metricText(p.passed))}</tr>`,
+    )
+    .join('\n');
+  const diagnosticRows = report.diagnostics
+    .map(
+      (d) =>
+        `<tr>${cell(d.severity, ` class="${d.severity}"`)}${cell(d.code)}${cell(d.caseIds?.join(', ') ?? d.path ?? '')}${cell(d.message)}</tr>`,
+    )
+    .join('\n');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>${escapeHtml(report.model.id)} coverage</title>
+<style>
+${PAGE_STYLE}
+</style>
+</head>
+<body>
+<header>
+<h1>${escapeHtml(report.model.id)}</h1>
+<p class="muted">Strength ${String(report.strength)} · ${String(report.matrix.cases.length)} cases · ${String(report.universe.validConfigurations)} of ${String(report.universe.rawConfigurations)} configurations valid · ${String(report.universe.interactions)} valid interactions · matrix <code>${escapeHtml(report.matrixHash.slice(0, 12))}</code> · nwise-kit ${escapeHtml(report.toolVersion)}</p>
+${runParagraph(report)}
+</header>
+<section>
+<h2>Coverage</h2>
+<div class="metrics">
+${metrics.map(([name, metric]) => `<div class="metric">${escapeHtml(name)}<b>${escapeHtml(metricText(metric))}</b></div>`).join('\n')}
+</div>
+<div class="scroll"><table><thead><tr><th>Strength</th><th>Declared</th><th>Observed</th><th>Passed</th></tr></thead><tbody>
+${profileRows}
+</tbody></table></div>
+</section>
+<section>
+<h2>By parameter group</h2>
+<div class="scroll"><table><thead><tr><th>Group</th><th>Declared</th><th>Observed</th><th>Passed</th></tr></thead><tbody>
+${groupRows}
+</tbody></table></div>
+</section>
+<section>
+<h2>Missing interactions</h2>
+<div class="controls">
+<label>Metric <select id="metric"></select></label>
+<label>Filter <input id="filter" type="search" placeholder="e.g. role=guest"></label>
+<span id="count" class="muted"></span>
+</div>
+<div class="scroll"><table><tbody id="missing"></tbody></table></div>
+</section>
+<section>
+<h2>Find cases for an interaction</h2>
+<p class="muted">Choose values; the cases that contain all of them are listed with their outcome in the run.</p>
+<div class="controls" id="pickers"></div>
+<div class="scroll"><table><thead><tr><th>Case</th><th>Values</th><th>Outcome</th></tr></thead><tbody id="cases"></tbody></table></div>
+</section>
+${recommendationsSection(suggestions)}
+<section>
+<h2>Diagnostics</h2>
+<div class="scroll"><table><thead><tr><th>Severity</th><th>Code</th><th>Where</th><th>Message</th></tr></thead><tbody>
+${diagnosticRows || '<tr><td colspan="4" class="muted">None</td></tr>'}
+</tbody></table></div>
+</section>
+<script type="application/json" id="data">${embedJson(pageData(report))}</script>
+<script>
+${PAGE_SCRIPT}
 </script>
 </body>
 </html>
