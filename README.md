@@ -183,6 +183,11 @@ them. A search that stops early, at `--max-new-cases` or at the work limit,
 still exits 0 and says why; add `--require-target` to make an unmet target
 exit 1.
 
+After a test run, `--basis observed --run <runtime report>` or `--basis passed`
+starts from what the run actually counted. A useful configuration that is
+already in the matrix is then listed as `rerun-existing`, with its case id
+and how it ended in the run, instead of being added again.
+
 | Exit code | Meaning                                                                                |
 | --------- | -------------------------------------------------------------------------------------- |
 | 0         | Success; any requested gate passed                                                     |

@@ -6,6 +6,8 @@ import type { Universe } from '../coverage/universe.js';
 import { buildUniverse, cellOf } from '../coverage/universe.js';
 import type { Diagnostic } from '../errors.js';
 import { NwiseKitError } from '../errors.js';
+import { contribution } from '../evidence/lifecycle.js';
+import { validateEvidence } from '../evidence/validate.js';
 import { matrixHash, modelHash } from '../model/canonical.js';
 import type { TestCase } from '../model/cases.js';
 import { caseValues, validateCases } from '../model/cases.js';
@@ -39,6 +41,11 @@ export interface Recommendation {
   readonly indices: readonly number[];
   /** Existing cases with the same configuration, sorted. */
   readonly matchedCaseIds: readonly string[];
+  /**
+   * For `rerun-existing` from a runtime basis: how each matched case ended
+   * in the run. Rerunning is not assumed to succeed.
+   */
+  readonly previousOutcomes: readonly { readonly caseId: string; readonly outcome: string }[];
   /** Interactions this recommendation adds to the ones before it. */
   readonly gain: number;
   /** Coverage once this and every earlier recommendation are in place. */
@@ -48,6 +55,8 @@ export interface Recommendation {
 export interface SuggestionResult {
   readonly algorithm: typeof ALGORITHM;
   readonly basis: Basis;
+  /** The run whose evidence was the starting point, or null for the declared basis. */
+  readonly runId: string | null;
   readonly modelId: string;
   readonly strength: Strength;
   readonly modelHash: string;
@@ -75,8 +84,13 @@ export interface SuggestionResult {
 export interface SuggestCasesOptions {
   readonly model: unknown;
   readonly cases: unknown;
-  /** Coverage to start from. Only `declared` is available until runtime reports are supported. */
+  /**
+   * Coverage to start from: the declared matrix (default), or what a run
+   * observed or passed. A runtime basis needs that run's evidence.
+   */
   readonly basis?: Basis;
+  /** Run evidence for the matrix, required with the observed and passed bases. */
+  readonly evidence?: unknown;
   /** Percentage to reach, at most three decimals. Defaults to 100. */
   readonly targetCoverage?: number | string;
   /** Most recommendations to return. Defaults to 10. */
@@ -95,13 +109,13 @@ export interface SuggestCasesOptions {
 export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
   const started = performance.now();
   const basis = options.basis ?? 'declared';
-  if (basis !== 'declared') {
+  if (basis !== 'declared' && options.evidence === undefined) {
     throw new NwiseKitError('INVALID_ARGUMENTS', `The ${basis} basis needs runtime evidence`, [
       {
-        code: 'BASIS_UNAVAILABLE',
+        code: 'BASIS_NEEDS_EVIDENCE',
         severity: 'error',
-        message: `Suggestions from ${basis} coverage need a runtime report, which this version cannot read yet`,
-        hint: 'Use the declared basis.',
+        message: `Suggestions from ${basis} coverage start from what a test run recorded`,
+        hint: 'Pass the evidence of a complete run, or use the declared basis.',
       },
     ]);
   }
@@ -122,10 +136,13 @@ export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
   const model = validateModel(options.model, limits);
   const cases = validateCases(options.cases, model);
   checkCasesSatisfyConstraints(model, cases);
+  const hashes = { modelHash: modelHash(model), matrixHash: matrixHash(model, cases) };
+  const run =
+    basis === 'declared' ? undefined : runtimeBasis(basis, options.evidence, hashes, cases);
   const universe = buildUniverse(model, limits);
 
   const covered = new CoverageSet(universe);
-  for (const testCase of cases) {
+  for (const testCase of run?.counted ?? cases) {
     covered.add(testCase.indices);
   }
   const baseline = covered.metric();
@@ -141,10 +158,10 @@ export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
   return {
     algorithm: ALGORITHM,
     basis,
+    runId: run?.runId ?? null,
     modelId: model.id,
     strength: model.strength,
-    modelHash: modelHash(model),
-    matrixHash: matrixHash(model, cases),
+    ...hashes,
     target,
     maxNewCases,
     baseline,
@@ -155,6 +172,13 @@ export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
         values: caseValues(model, pick.indices),
         indices: pick.indices,
         matchedCaseIds,
+        previousOutcomes:
+          run === undefined
+            ? []
+            : matchedCaseIds.map((caseId) => ({
+                caseId,
+                outcome: run.outcomes.get(caseId) ?? 'unregistered',
+              })),
         gain: pick.gain,
         projected: pick.projected,
       };
@@ -254,4 +278,50 @@ function casesByConfiguration(cases: readonly TestCase[]): Map<string, string[]>
     map.set(key, [...(map.get(key) ?? []), testCase.id].sort(compareCodeUnits));
   }
   return map;
+}
+
+interface RuntimeBasis {
+  readonly runId: string;
+  /** Cases that count toward the chosen basis. */
+  readonly counted: readonly TestCase[];
+  /** Final outcome of each registered case. */
+  readonly outcomes: ReadonlyMap<string, string>;
+}
+
+/**
+ * The cases a complete run observed or passed. An incomplete run is
+ * refused: suggestions from partial evidence would look authoritative.
+ */
+function runtimeBasis(
+  basis: 'observed' | 'passed',
+  input: unknown,
+  hashes: { readonly modelHash: string; readonly matrixHash: string },
+  cases: readonly TestCase[],
+): RuntimeBasis {
+  const evidence = validateEvidence(input, { ...hashes, cases });
+  const complete =
+    evidence.infrastructureErrors.length === 0 &&
+    evidence.tests.every((test) => test.outcome !== 'missing');
+  if (!complete) {
+    throw new NwiseKitError('RUNTIME_INCOMPLETE', `Run ${evidence.runId} is incomplete`, [
+      {
+        code: 'RUNTIME_INCOMPLETE',
+        severity: 'error',
+        message: 'Suggestions need the evidence of a complete run',
+        hint: 'Fix the run and test again, or use the declared basis.',
+      },
+    ]);
+  }
+  const byId = new Map(cases.map((c) => [c.id, c]));
+  const counted: TestCase[] = [];
+  const outcomes = new Map<string, string>();
+  for (const test of evidence.tests) {
+    outcomes.set(test.caseId, test.outcome);
+    const result = contribution(test);
+    const testCase = byId.get(test.caseId);
+    if (testCase !== undefined && (basis === 'observed' ? result.observed : result.passed)) {
+      counted.push(testCase);
+    }
+  }
+  return { runId: evidence.runId, counted, outcomes };
 }

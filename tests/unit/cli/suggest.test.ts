@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'vitest';
+import { createRuntimeReport, formatReport } from '../../../src/reports/report.js';
+import { golden } from '../../fixtures/models.js';
+import { evidence, rows, testEntry } from '../evidence/helpers.js';
 import { exampleDir, runCli } from './helpers.js';
 
 let dir: string;
@@ -82,12 +85,57 @@ describe('nwise-kit suggest', () => {
     [['--target', '100.5'], 'Invalid coverage threshold'],
     [['--basis', 'lines'], 'Unknown basis "lines"'],
     [['--basis', 'observed'], 'requires --run'],
-    [['--basis', 'passed', '--run', 'run.json'], 'cannot read yet'],
     [['--run', 'run.json'], '--run is only used with --basis observed or passed'],
   ])('rejects %j with exit 2', (args, message) => {
     const result = suggest(...args);
     expect(result.code).toBe(2);
     expect(result.stderr).toContain(message);
+  });
+
+  test('starts from a runtime report and recommends reruns', () => {
+    const run = join(dir, 'run.json');
+    writeFileSync(
+      run,
+      formatReport(
+        createRuntimeReport({
+          model: golden,
+          matrix: { schemaVersion: 1, modelId: 'golden', cases: rows },
+          evidence: evidence([
+            testEntry(rows[0]?.id ?? ''),
+            testEntry(rows[1]?.id ?? '', { outcome: 'failed', checkpointAttempts: [] }),
+          ]),
+          toolVersion: 'test',
+        }),
+      ),
+    );
+    writeFileSync(cases, JSON.stringify({ schemaVersion: 1, modelId: 'golden', cases: rows }));
+    const result = suggest('--basis', 'observed', '--run', run);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('basis observed from run run-1');
+    expect(result.stdout).toContain(`rerun-existing (existing: ${rows[1]?.id ?? ''}, failed)`);
+  });
+
+  test('refuses a static report or an incomplete run as --run', () => {
+    const report = join(dir, 'static.json');
+    expect(runCli('analyze', '--model', model, '--cases', cases, '--json', report).code).toBe(0);
+    const fromStatic = suggest('--basis', 'observed', '--run', report);
+    expect(fromStatic.code).toBe(2);
+    expect(fromStatic.stderr).toContain('is a static report');
+
+    const incomplete = join(dir, 'incomplete.json');
+    writeFileSync(
+      incomplete,
+      formatReport(
+        createRuntimeReport({
+          model: golden,
+          matrix: { schemaVersion: 1, modelId: 'golden', cases: rows },
+          evidence: evidence([testEntry(rows[0]?.id ?? '', { outcome: 'missing' })]),
+          toolVersion: 'test',
+        }),
+      ),
+    );
+    writeFileSync(cases, JSON.stringify({ schemaVersion: 1, modelId: 'golden', cases: rows }));
+    expect(suggest('--basis', 'passed', '--run', incomplete).code).toBe(3);
   });
 
   test('requires --out', () => {

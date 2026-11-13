@@ -93,9 +93,9 @@ describe('suggestCases on the reference model', () => {
 });
 
 describe('suggestCases arguments', () => {
-  test('rejects a runtime basis until runtime reports are supported', () => {
+  test('needs run evidence for a runtime basis', () => {
     expect(rejection({ ...base, basis: 'observed' }).diagnostics[0]?.code).toBe(
-      'BASIS_UNAVAILABLE',
+      'BASIS_NEEDS_EVIDENCE',
     );
   });
 
