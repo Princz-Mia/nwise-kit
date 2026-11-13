@@ -303,7 +303,14 @@ npm ci
 npm run verify
 ```
 
-`verify` runs the format check, lint, type check, unit tests and build.
+`verify` runs the format check, lint, type check, unit tests, integration
+tests (the built CLI and real Vitest runs) and the build. To check the
+package as users would install it, in fresh projects with and without
+Vitest:
+
+```bash
+npm run package:check
+```
 
 After cloning, enable the commit message hook and template:
 
@@ -311,6 +318,10 @@ After cloning, enable the commit message hook and template:
 git config core.hooksPath .githooks
 git config commit.template .gitmessage.txt
 ```
+
+## Changes
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
