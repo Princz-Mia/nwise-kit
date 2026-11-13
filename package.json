@@ -31,7 +31,8 @@
     "dist",
     "schemas",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "peerDependencies": {
     "vitest": "~5.1.0"

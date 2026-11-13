@@ -108,7 +108,7 @@ function inspect(tarball) {
   const files = new Set(listing);
   const packed = JSON.parse(read('package.json'));
 
-  const targets = new Set(['package.json', 'README.md', 'LICENSE']);
+  const targets = new Set(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']);
   const add = (value) => {
     if (typeof value === 'string') {
       targets.add(value.replace(/^\.\//, ''));
