@@ -207,6 +207,20 @@ describe('analyzeMatrix limits', () => {
     expect(clockReads).toBe(1);
   });
 
+  test('accepts a model exactly at each limit and rejects one past it', () => {
+    // The golden model has 8 raw configurations, 6 valid ones and 11 valid pairs.
+    const atLimits = { maxRawConfigurations: 8, maxValidConfigurations: 6, maxInteractions: 11 };
+    expect(analyzeMatrix({ model: golden, cases: [], limits: atLimits }).universe).toEqual({
+      rawConfigurations: 8,
+      validConfigurations: 6,
+      interactions: 11,
+    });
+    const overRaw = rejection(() =>
+      analyzeMatrix({ model: golden, cases: [], limits: { maxRawConfigurations: 7 } }),
+    );
+    expect(overRaw.code).toBe('LIMIT_EXCEEDED');
+  });
+
   test('stops with an incomplete analysis when valid configurations exceed the limit', () => {
     const error = rejection(() =>
       analyzeMatrix({ model: golden, cases: [], limits: { maxValidConfigurations: 5 } }),
