@@ -59,6 +59,11 @@ function identity(path: string): string {
   return process.platform === 'win32' || process.platform === 'darwin' ? full.toLowerCase() : full;
 }
 
+/** Whether two paths name the same file. */
+export function samePath(a: string, b: string): boolean {
+  return identity(a) === identity(b);
+}
+
 /**
  * Checks an output path before any work is done: it must not be one of
  * the inputs, even with --force, and it must not exist unless --force
