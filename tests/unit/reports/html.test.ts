@@ -15,8 +15,8 @@ const matrix = { schemaVersion: 1, modelId: 'golden', cases: goldenRows('000', '
 
 function embedded(html: string): {
   missing: Record<string, { total: number; items: string[] } | null>;
-  cases: { id: string }[];
-  outcomes: Record<string, { outcome: string }>;
+  parameters: { name: string; values: unknown[] }[];
+  cases: { id: string; values: unknown[]; run: { outcome: string } | null }[];
 } {
   const match = /<script type="application\/json" id="data">(.*?)<\/script>/s.exec(html);
   return JSON.parse(match?.[1] ?? 'null') as ReturnType<typeof embedded>;
@@ -66,8 +66,31 @@ describe('renderHtml', () => {
     expect(page).not.toContain('<img src=x');
     expect(page.match(/<\/script>/g)).toHaveLength(2);
     expect(page).toContain('<title>&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt;');
-    const data = embedded(page) as unknown as { domains: Record<string, string[]> };
-    expect(data.domains[hostile]).toEqual([hostile, 'ok']);
+    const parameter = embedded(page).parameters.find((p) => p.name === hostile);
+    expect(parameter?.values).toEqual([hostile, 'ok']);
+  });
+
+  test('handles parameter and case names that collide with built-in properties', () => {
+    const model = {
+      schemaVersion: 1,
+      id: 'names',
+      strength: 2,
+      parameters: { constructor: ['a', 'b'], toString: [1, 2] },
+    };
+    const cases = [{ id: 'hasOwnProperty', values: { constructor: 'a', toString: 1 } }];
+    const page = renderHtml(
+      createStaticReport({
+        model,
+        matrix: { schemaVersion: 1, modelId: 'names', cases },
+        toolVersion: '1.2.3',
+      }),
+    );
+    const data = embedded(page);
+    expect(data.parameters).toEqual([
+      { name: 'constructor', values: ['a', 'b'] },
+      { name: 'toString', values: [1, 2] },
+    ]);
+    expect(data.cases).toEqual([{ id: 'hasOwnProperty', values: ['a', 1], run: null }]);
   });
 
   test('says when the embedded list of missing interactions is cut short', () => {
@@ -115,7 +138,7 @@ describe('renderHtml', () => {
     expect(page).toContain('passed<b>3 / 11 (27.27%)</b>');
     expect(page).toContain('Recommendations <small>(projected, observed basis)</small>');
     expect(page).toContain(`<td>rerun-existing (${one})</td>`);
-    expect(embedded(page).outcomes[one]?.outcome).toBe('failed');
+    expect(embedded(page).cases.find((c) => c.id === one)?.run?.outcome).toBe('failed');
 
     const incomplete = createRuntimeReport({
       model: golden,
