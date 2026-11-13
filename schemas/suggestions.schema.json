@@ -11,6 +11,7 @@
     "kind",
     "algorithm",
     "basis",
+    "runId",
     "modelId",
     "strength",
     "modelHash",
@@ -46,6 +47,10 @@
     "basis": {
       "enum": ["declared", "observed", "passed"]
     },
+    "runId": {
+      "type": ["string", "null"],
+      "description": "The run whose evidence was the starting point; null for the declared basis."
+    },
     "modelId": {
       "type": "string",
       "minLength": 1
@@ -74,7 +79,15 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "values", "indices", "matchedCaseIds", "gain", "projected"],
+        "required": [
+          "kind",
+          "values",
+          "indices",
+          "matchedCaseIds",
+          "previousOutcomes",
+          "gain",
+          "projected"
+        ],
         "properties": {
           "kind": {
             "enum": ["add-case", "rerun-existing"]
@@ -96,6 +109,23 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "previousOutcomes": {
+            "type": "array",
+            "description": "How each matched case ended in the run, for rerun-existing recommendations from a runtime basis.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["caseId", "outcome"],
+              "properties": {
+                "caseId": {
+                  "type": "string"
+                },
+                "outcome": {
+                  "type": "string"
+                }
+              }
             }
           },
           "gain": {
