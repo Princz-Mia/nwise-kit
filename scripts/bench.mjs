@@ -103,6 +103,14 @@ const SCENARIOS = {
       return (kit) => kit.analyzeMatrix({ model: m, cases });
     },
   },
+  'fourway-10x3': {
+    description: '10 x 3 at strength 4: 385 parameter groups across the four levels, 1,000 rows',
+    build() {
+      const m = model('fourway-10x3', 4, 10, 3);
+      const cases = rows(m, 1000, 8);
+      return (kit) => kit.analyzeMatrix({ model: m, cases });
+    },
+  },
   'near-limit-12x3': {
     description:
       '12 x 3, strength 2, 531,441 raw and 59,049 valid configurations (two parameters pinned), 1,000 rows',
