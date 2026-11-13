@@ -2,6 +2,7 @@ import { neutralize } from '../reports/terminal.js';
 import { analyzeCommand } from './analyze.js';
 import { invalidArguments } from './args.js';
 import { checkCommand } from './check.js';
+import { reportCommand } from './report.js';
 import { suggestCommand } from './suggest.js';
 import { EXIT, exitCodeFor, renderError } from './exit.js';
 import type { CliIo } from './io.js';
@@ -12,6 +13,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   analyze: analyzeCommand,
   check: checkCommand,
   suggest: suggestCommand,
+  report: reportCommand,
 };
 
 export const USAGE = `Usage: nwise-kit <command> [options]
@@ -22,6 +24,7 @@ Commands:
   analyze   Measure the coverage of an existing test matrix
   check     Check a report's coverage against a threshold
   suggest   Recommend configurations that close coverage gaps
+  report    Write an offline HTML page for a report
 
 Run "nwise-kit <command> --help" for a command's options.
 

@@ -8,9 +8,9 @@ dimensions) an existing test suite covers, lists the missing
 interactions, and recommends extra configurations to close the gaps.
 
 > **Status:** under development. Nothing has been published to npm yet.
-> From a checkout of this repository, the `analyze`, `check` and `suggest`
-> commands, the library and the Vitest integration work today. HTML reports
-> and the npm release are being built.
+> From a checkout of this repository, every command (`analyze`, `check`,
+> `suggest`, `report`), the library and the Vitest integration work today.
+> The npm release is being prepared.
 
 ## The problem
 
@@ -187,6 +187,20 @@ After a test run, `--basis observed --run <runtime report>` or `--basis passed`
 starts from what the run actually counted. A useful configuration that is
 already in the matrix is then listed as `rerun-existing`, with its case id
 and how it ended in the run, instead of being added again.
+
+`report` turns a static or runtime report into one self-contained HTML
+page that opens offline and makes no network requests:
+
+```bash
+node dist/cli/index.js report --input report.json --html report.html --suggestions suggestions.json
+```
+
+The page shows every metric and its completeness, coverage by strength and
+by parameter group, a searchable list of missing interactions, the cases
+(and their outcome in the run) that contain any combination of values you
+pick, diagnostics, and, with `--suggestions`, the projected recommendations.
+Very long lists are cut short on the page with a notice; the exact counts
+and the JSON report stay complete.
 
 | Exit code | Meaning                                                                                |
 | --------- | -------------------------------------------------------------------------------------- |
