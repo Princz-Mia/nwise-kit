@@ -21,8 +21,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        # The lowest supported release and the current 24.x patch.
-        node: ['24.0.0', '24.x']
+        # The current patch of every supported release line.
+        node: ['22.x', '24.x', '26.x']
+        include:
+          # The lowest supported release of each older line, once.
+          - os: ubuntu-latest
+            node: '22.13.0'
+          - os: ubuntu-latest
+            node: '24.0.0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -47,17 +53,24 @@ jobs:
         run: npm run build
 
   package:
-    name: package (${{ matrix.os }})
+    name: package (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['24.x']
+        include:
+          # The package must also install and run on the other release lines.
+          - os: ubuntu-latest
+            node: '22.x'
+          - os: ubuntu-latest
+            node: '26.x'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24.x'
+          node-version: ${{ matrix.node }}
           cache: npm
       - name: Install dependencies
         run: npm ci
