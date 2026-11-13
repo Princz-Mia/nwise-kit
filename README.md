@@ -9,8 +9,8 @@ interactions, and recommends extra configurations to close the gaps.
 
 > **Status:** under development. Nothing has been published to npm yet.
 > From a checkout of this repository, the `analyze`, `check` and `suggest`
-> commands and the library work today. The Vitest adapter for observed and
-> passed coverage and HTML reports are being built.
+> commands, the library and the Vitest integration work today. HTML reports
+> and the npm release are being built.
 
 ## The problem
 
@@ -71,7 +71,7 @@ Coverage comes in three flavours. **Declared** coverage counts the rows of
 your test matrix. **Observed** coverage will count the configurations whose
 test actually reached its measurement point during a run, and **passed**
 coverage the ones whose final attempt also passed. Observed and passed
-coverage arrive with the Vitest adapter; until then they are reported as
+coverage come from a Vitest run; a static analysis reports them as
 unavailable, never as zero.
 
 ## A worked example
@@ -193,6 +193,66 @@ exit 1.
 Models, matrices, reports and suggestions have JSON Schemas in [schemas/](schemas/),
 which editors can use for validation and completion. The tool checks more
 than a schema can, such as references to unknown parameters.
+
+## Vitest integration
+
+Declared coverage says what your matrix _could_ cover. To know what your
+tests actually exercised, bind them to the matrix and add the reporter.
+Vitest 5.1 is supported; it is an optional peer dependency.
+
+```ts
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+import { NwiseKitReporter } from 'nwise-kit/reporter';
+
+export default defineConfig({
+  test: {
+    reporters: ['default', new NwiseKitReporter({ outputDir: './nwise-kit-results' })],
+  },
+});
+```
+
+```ts
+// checkout.test.ts
+import { expect } from 'vitest';
+import { createMatrixSuite } from 'nwise-kit/vitest';
+import model from './model.json';
+import matrix from './cases.json';
+
+const checkout = createMatrixSuite({ model, cases: matrix.cases });
+
+checkout.test('guest-eu-legacy', async ({ values, cover }) => {
+  const result = await evaluateCheckout(values);
+  cover();
+  expect(result.allowed).toBe(false);
+});
+```
+
+Each test is bound to one case id and receives that case's values. Call
+`cover()` once the test has reached the point it measures, usually right
+after the operation under test. `test.skip`, `test.todo` and
+`test.concurrent` work as in Vitest, and retries use Vitest's own `retry`
+option. If the reporter is missing, `createMatrixSuite` throws instead of
+letting the run look measured.
+
+After `vitest run`, the reporter writes one runtime report per matrix and a
+`manifest.json` to `nwise-kit-results/<run id>/`. Each run gets its own
+directory and runs are never merged. A configuration counts as:
+
+- **observed** when its test reached `cover()` in any attempt of the run;
+- **passed** when the final attempt reached `cover()` and the test passed,
+  including its hooks.
+
+A test that recovers on a retry counts and is flagged as flaky. Skipped,
+todo, filtered and unregistered rows stay in the denominator. If a worker
+crashes or the run is interrupted, the report is marked incomplete:
+observed and passed become unavailable and `check` exits 3. The reporter
+never changes Vitest's own exit code, so keep that as a separate CI step:
+
+```bash
+npx vitest run
+node dist/cli/index.js check --input nwise-kit-results/<run id>/<hash>.json --metric passed --min-coverage 90
+```
 
 ## Limitations
 

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "lifecycle",
+  "strength": 2,
+  "parameters": {
+    "os": ["Windows", "Linux"],
+    "cpu": ["Intel", "AMD"],
+    "protocol": ["IPv4", "IPv6"]
+  }
+}
