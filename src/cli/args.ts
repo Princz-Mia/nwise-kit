@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
 import { NwiseKitError } from '../errors.js';
+import { neutralize } from '../reports/terminal.js';
 
 export type OptionTypes = Readonly<Record<string, 'string' | 'boolean'>>;
 
@@ -45,6 +46,20 @@ export function parseOptions<T extends OptionTypes>(
 export function requireOption(value: string | undefined, name: string, command: string): string {
   if (value === undefined || value === '') {
     throw invalidArguments(`Missing --${name}`, `Run "nwise-kit ${command} --help" for usage.`);
+  }
+  return value;
+}
+
+const POSITIVE_INTEGER = /^[1-9]\d*$/;
+
+/** Parses the value of an option that must be a positive whole number. */
+export function parsePositiveInteger(text: string, name: string): number {
+  const value = Number(text);
+  if (!POSITIVE_INTEGER.test(text) || !Number.isSafeInteger(value)) {
+    throw invalidArguments(
+      `Invalid --${name} "${neutralize(text)}"`,
+      'Use a positive whole number.',
+    );
   }
   return value;
 }

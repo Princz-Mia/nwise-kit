@@ -2,6 +2,7 @@ import { neutralize } from '../reports/terminal.js';
 import { analyzeCommand } from './analyze.js';
 import { invalidArguments } from './args.js';
 import { checkCommand } from './check.js';
+import { generateCommand } from './generate.js';
 import { reportCommand } from './report.js';
 import { suggestCommand } from './suggest.js';
 import { EXIT, exitCodeFor, renderError } from './exit.js';
@@ -13,6 +14,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   analyze: analyzeCommand,
   check: checkCommand,
   suggest: suggestCommand,
+  generate: generateCommand,
   report: reportCommand,
 };
 
@@ -24,6 +26,7 @@ Commands:
   analyze   Measure the coverage of an existing test matrix
   check     Check a report's coverage against a threshold
   suggest   Recommend configurations that close coverage gaps
+  generate  Write a matrix of test cases that covers the model
   report    Write an offline HTML page for a report
 
 Run "nwise-kit <command> --help" for a command's options.
@@ -34,7 +37,7 @@ Options:
 
 Exit codes:
   0  Success; any requested gate passed
-  1  A coverage gate or a required suggestion target was not met
+  1  A coverage gate, a required suggestion target or a generation target was not met
   2  Invalid arguments or input, an unavailable metric or an unsatisfiable model
   3  Incomplete analysis, a resource limit, an I/O failure or an internal error
 `;

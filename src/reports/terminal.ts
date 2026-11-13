@@ -159,6 +159,22 @@ const STOP_REASONS: Readonly<Record<StopReason, string>> = {
   'work-budget': 'the work budget ran out before the target',
 };
 
+/** The human-readable summary of a generated matrix, for standard output. */
+export function renderGeneration(result: SuggestionResult, existingCases: number): string {
+  const added = result.recommendations.length;
+  const lines = [
+    `Model ${neutralize(result.modelId)}, strength ${String(result.strength)}, target ${result.target}%`,
+    `Cases: ${String(existingCases)} existing, ${String(added)} added`,
+    `Coverage: ${formatMetric(result.baseline)} before, ${formatMetric(result.projected)} with the added cases`,
+  ];
+  if (!result.targetReached) {
+    lines.push(
+      `Target not reached: ${STOP_REASONS[result.stopReason]}. Still missing: ${String(result.remaining.length)}`,
+    );
+  }
+  return `${lines.join('\n')}\n`;
+}
+
 /** The human-readable summary of a suggestion search, for standard output. */
 export function renderSuggestions(result: SuggestionResult): string {
   const lines = [
