@@ -113,7 +113,8 @@ describe('validateModel', () => {
 
   test.each([
     [1, 'UNSUPPORTED_STRENGTH'],
-    [4, 'UNSUPPORTED_STRENGTH'],
+    [7, 'UNSUPPORTED_STRENGTH'],
+    [2.5, 'UNSUPPORTED_STRENGTH'],
     ['2', 'UNSUPPORTED_STRENGTH'],
   ])('rejects strength %j', (strength, code) => {
     expect(issues(withChanges({ strength }))).toEqual([[code, '/strength']]);

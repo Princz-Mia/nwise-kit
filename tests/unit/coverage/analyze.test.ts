@@ -121,6 +121,45 @@ describe('analyzeMatrix strength profile', () => {
     ]);
   });
 
+  test('measures up to six-way interactions', () => {
+    const parameters = Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f'].map((n) => [n, [0, 1]]));
+    const model = { schemaVersion: 1, id: 'six', strength: 6, parameters };
+    const row = { id: 'zeros', values: Object.fromEntries(Object.keys(parameters).map((n) => [n, 0])) };
+    const analysis = analyzeMatrix({ model, cases: [row] });
+    // C(6, k) parameter groups with 2^k value combinations each; one row covers one per group.
+    expect(profile(analysis)).toEqual([
+      [1, 6, 12],
+      [2, 15, 60],
+      [3, 20, 160],
+      [4, 15, 240],
+      [5, 6, 192],
+      [6, 1, 64],
+    ]);
+    expect(analysis.groups).toHaveLength(1);
+    expect(analysis.missing.declared).toHaveLength(63);
+  });
+
+  test('finds a four-way gap that three-way coverage hides', () => {
+    // Every row has an even number of ones, so all triples appear but half of the quadruples do not.
+    const parameters = Object.fromEntries(['a', 'b', 'c', 'd'].map((n) => [n, [0, 1]]));
+    const cases = Array.from({ length: 16 }, (_, i) => [i >> 3, (i >> 2) & 1, (i >> 1) & 1, i & 1])
+      .filter((bits) => bits.reduce((sum, bit) => sum + bit, 0) % 2 === 0)
+      .map((bits, i) => ({
+        id: `even-${String(i)}`,
+        values: { a: bits[0] ?? 0, b: bits[1] ?? 0, c: bits[2] ?? 0, d: bits[3] ?? 0 },
+      }));
+    const analysis = analyzeMatrix({
+      model: { schemaVersion: 1, id: 'parity', strength: 4, parameters },
+      cases,
+    });
+    expect(profile(analysis)).toEqual([
+      [1, 8, 8],
+      [2, 24, 24],
+      [3, 32, 32],
+      [4, 8, 16],
+    ]);
+  });
+
   test('counts only valid single values', () => {
     const model = { ...golden, constraints: [{ id: 'no-c1', rule: { eq: ['C', 0] } }] };
     const analysis = analyzeMatrix({ model, cases: [] });

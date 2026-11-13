@@ -40,16 +40,24 @@ export function formatInteraction(interaction: ReportInteraction): string {
     .join(', ');
 }
 
-const KIND_OF_INTERACTION: Readonly<Record<number, string>> = {
-  1: 'values',
-  2: 'pairs',
-  3: 'triples',
-};
+/** What interactions of a strength are called in summaries. */
+function unitOf(strength: number): string {
+  switch (strength) {
+    case 1:
+      return 'values';
+    case 2:
+      return 'pairs';
+    case 3:
+      return 'triples';
+    default:
+      return `${String(strength)}-way interactions`;
+  }
+}
 
 /** The human-readable summary of a static or runtime report, for standard output. */
 export function renderSummary(report: Report, preview = MISSING_PREVIEW): string {
   const { metrics, universe, matrix } = report;
-  const unit = KIND_OF_INTERACTION[report.strength] ?? 'interactions';
+  const unit = unitOf(report.strength);
   const lines = [
     `Model ${neutralize(report.model.id)}, strength ${String(report.strength)}`,
     `Matrix: ${String(matrix.cases.length)} case${matrix.cases.length === 1 ? '' : 's'}, hash ${report.matrixHash.slice(0, 12)}`,
