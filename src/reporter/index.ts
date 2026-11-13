@@ -8,7 +8,7 @@ import type { RuntimeReport } from '../reports/report.js';
 import { createRuntimeReport, formatReport } from '../reports/report.js';
 import { formatMetric, neutralize, renderDiagnostic } from '../reports/terminal.js';
 import type { CaseMeta, Handshake, Registration } from '../vitest/protocol.js';
-import { KEY, PROTOCOL } from '../vitest/protocol.js';
+import { isCaseMeta, KEY, PROTOCOL } from '../vitest/protocol.js';
 
 export interface NwiseKitReporterOptions {
   /** Directory for results; each run gets its own subdirectory. Default: ./nwise-kit-results */
@@ -115,8 +115,15 @@ export class NwiseKitReporter implements Reporter {
   }
 
   private record(testCase: TestCase, atEnd: boolean): void {
-    const meta = testCase.meta()[KEY];
+    const meta: unknown = testCase.meta()[KEY];
     if (meta === undefined) {
+      return;
+    }
+    if (!isCaseMeta(meta)) {
+      const problem = `${testCase.fullName}: unrecognised matrix metadata; the test was ignored`;
+      if (!this.problems.includes(problem)) {
+        this.problems.push(problem);
+      }
       return;
     }
     const state = this.matrix(meta);
@@ -192,6 +199,10 @@ export class NwiseKitReporter implements Reporter {
   }
 
   private finish(infrastructure: readonly string[]): void {
+    for (const problem of this.problems) {
+      this.write(`nwise-kit: ${neutralize(problem)}
+`);
+    }
     if (this.matrices.size === 0) {
       return;
     }
