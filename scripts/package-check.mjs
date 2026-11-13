@@ -13,7 +13,15 @@
 // through workspace links or the repository's node_modules.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { gunzipSync } from 'node:zlib';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -294,12 +302,14 @@ golden.test('all-one', ({ cover }) => {
   run('npm', ['exec', '--no', '--', 'tsc', '-p', '.'], dir);
   step('running Vitest in the consumer project');
   const vitest = run('npm', ['exec', '--no', '--', 'vitest', 'run'], dir, { allowFailure: true });
-  if (vitest.status !== 1) {
+  const results = join(dir, 'nwise-kit-results');
+  // Exit code 1 alone could also mean "no test files found", so require the report too.
+  if (vitest.status !== 1 || !existsSync(results)) {
+    console.error(vitest.stdout, vitest.stderr);
     fail(
-      `Vitest should keep its own exit code 1 for the failing test, got ${String(vitest.status)}`,
+      `Vitest should run the matrix tests, keep exit code 1 for the failing one and leave a report; got exit code ${String(vitest.status)}${existsSync(results) ? '' : ' and no report'}`,
     );
   }
-  const results = join(dir, 'nwise-kit-results');
   const [runId] = readdirSync(results);
   const runManifest = JSON.parse(readFileSync(join(results, runId, 'manifest.json'), 'utf8'));
   const [entry] = runManifest.reports;
@@ -311,7 +321,9 @@ golden.test('all-one', ({ cover }) => {
   step('the Vitest adapter and reporter work from the installed package');
 }
 
-const work = mkdtempSync(join(tmpdir(), 'nwise-kit-package-'));
+// Expand Windows short names such as RUNNER~1: tools that resolve the long
+// form would otherwise see paths outside the project and find no tests.
+const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'nwise-kit-package-')));
 try {
   const tarball = tarballFromArgs() ?? pack(work);
   inspect(tarball);
