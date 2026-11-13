@@ -29,5 +29,18 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-      - run: npm run verify
+      - name: Install dependencies
+        run: npm ci
+      # The same checks as "npm run verify", one step each so a failure is easy to find.
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests (built CLI)
+        run: npm run test:integration
+      - name: Build
+        run: npm run build
