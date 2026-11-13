@@ -154,7 +154,7 @@ const STOP_REASONS: Readonly<Record<StopReason, string>> = {
 /** The human-readable summary of a suggestion search, for standard output. */
 export function renderSuggestions(result: SuggestionResult): string {
   const lines = [
-    `Model ${neutralize(result.modelId)}, strength ${String(result.strength)}, basis ${result.basis}`,
+    `Model ${neutralize(result.modelId)}, strength ${String(result.strength)}, basis ${result.basis}${result.runId === null ? '' : ` from run ${neutralize(result.runId)}`}`,
     `Baseline: ${formatMetric(result.baseline)}`,
     `Target: ${result.target}%, at most ${String(result.maxNewCases)} new case${result.maxNewCases === 1 ? '' : 's'}`,
     '',
@@ -167,10 +167,16 @@ export function renderSuggestions(result: SuggestionResult): string {
       const values = Object.entries(r.values)
         .map(([name, value]) => `${neutralize(name)}=${neutralize(String(value))}`)
         .join(', ');
+      const outcomes = new Map(r.previousOutcomes.map((o) => [o.caseId, o.outcome]));
       const matched =
         r.matchedCaseIds.length === 0
           ? ''
-          : ` (existing: ${r.matchedCaseIds.map((id) => neutralize(id)).join(', ')})`;
+          : ` (existing: ${r.matchedCaseIds
+              .map((id) => {
+                const outcome = outcomes.get(id);
+                return outcome === undefined ? neutralize(id) : `${neutralize(id)}, ${outcome}`;
+              })
+              .join('; ')})`;
       lines.push(
         `  ${String(i + 1)}. ${r.kind}${matched}: ${values}`,
         `     +${String(r.gain)}, projected ${formatMetric(r.projected)}`,
