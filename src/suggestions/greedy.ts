@@ -275,7 +275,15 @@ function casesByConfiguration(cases: readonly TestCase[]): Map<string, string[]>
   const map = new Map<string, string[]>();
   for (const testCase of cases) {
     const key = testCase.indices.join(',');
-    map.set(key, [...(map.get(key) ?? []), testCase.id].sort(compareCodeUnits));
+    const ids = map.get(key);
+    if (ids === undefined) {
+      map.set(key, [testCase.id]);
+    } else {
+      ids.push(testCase.id);
+    }
+  }
+  for (const ids of map.values()) {
+    ids.sort(compareCodeUnits);
   }
   return map;
 }
