@@ -9,7 +9,8 @@ when a file written by an older version can no longer be read.
 ## [Unreleased]
 
 Nothing has been published to npm yet. The first preview will be
-`0.1.0-alpha.1` on the `next` tag.
+`0.1.0-alpha.1` on the `next` tag; this section becomes its entry when
+it is released.
 
 ### Added
 
