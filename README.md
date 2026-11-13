@@ -273,6 +273,14 @@ npx vitest run
 node dist/cli/index.js check --input nwise-kit-results/<run id>/<hash>.json --metric passed --min-coverage 90
 ```
 
+## Performance
+
+Analysis is exact, so its cost grows with the size of the model. On the
+reference machine, ten three-valued parameters with 1,000 rows take about
+31 ms at strength two and 85 ms at strength three. The method, all
+scenarios and the measured numbers are in [benchmarks/](benchmarks/);
+`npm run bench` reruns them on your machine.
+
 ## Limitations
 
 - Full pairwise coverage is not proof of correctness, and it does not
