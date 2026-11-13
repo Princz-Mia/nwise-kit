@@ -7,6 +7,7 @@ import { suggestCases } from '../../../src/suggestions/greedy.js';
 import { golden, goldenRows } from '../../fixtures/models.js';
 import type { Assignment } from '../../reference/brute-force.js';
 import { holds } from '../../reference/brute-force.js';
+import { naiveGreedy } from '../../reference/naive-greedy.js';
 import { asInput, scenarioArb } from '../../support/arbitraries.js';
 
 const base = { model: golden, cases: goldenRows('000', '111') };
@@ -153,6 +154,19 @@ describe('suggestion properties', () => {
         expect(analysis.metrics.declared).toEqual(result.projected);
         expect(analysis.metrics.declared.covered).toBe(analysis.metrics.declared.total);
       }),
+    );
+  });
+
+  test('picks the same configurations with the same gains as a naive reference', () => {
+    fc.assert(
+      fc.property(scenarioArb, fc.integer({ min: 1, max: 8 }), ({ model, rows }, budget) => {
+        const expected = naiveGreedy(model, rows, budget);
+        const actual = run(model, rows, budget).recommendations;
+        expect(actual.map((r) => [r.values, r.gain])).toEqual(
+          expected.map((pick) => [pick.values, pick.gain]),
+        );
+      }),
+      { numRuns: 300 },
     );
   });
 
