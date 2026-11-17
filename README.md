@@ -17,7 +17,7 @@ interactions, and recommends extra configurations to close the gaps.
 A suite can try every value of every parameter and still miss the
 combinations that matter. Line and branch coverage say which code ran,
 not which combinations of inputs were tried. NwiseKit answers a
-different question: _of all valid pairs (or triples) of parameter
+different question: _of all valid pairs (or triples, up to six-way combinations) of parameter
 values, which ones does my suite exercise, and which are missing?_
 
 ## Background
@@ -42,7 +42,7 @@ puts these ideas from the course's test design material into a tool:
 - **Many failures need two or more interacting parameters**, sometimes up
   to six, according to the empirical studies by Kuhn et al. Pairwise
   coverage does not guarantee finding faults that involve three or more
-  parameters; strength three is supported for that reason.
+  parameters; strengths up to six are supported for that reason.
 - **Finding a smallest suite that covers every combination (a covering
   array) is NP-hard.** Generators such as PICT and ACTS build suites from
   scratch; NwiseKit starts from the suite you already have and uses a
@@ -59,7 +59,7 @@ puts these ideas from the course's test design material into a tool:
 | Constraint          | A rule that excludes impossible combinations, such as "guests are always on the free plan". |
 | Valid configuration | A value for every parameter that satisfies every constraint.                                |
 | Interaction         | Values for `t` distinct parameters, such as `role=guest` and `region=US`.                   |
-| Strength `t`        | How many parameters an interaction combines: 2 for pairwise, 3 for three-way.               |
+| Strength `t`        | How many parameters an interaction combines: 2 for pairwise, 3 for three-way, up to 6.      |
 | Valid interaction   | One that appears in at least one valid configuration, considering all constraints at once.  |
 | Coverage            | Covered valid interactions divided by all valid interactions, summed over every group.      |
 
@@ -277,7 +277,7 @@ node dist/cli/index.js check --input nwise-kit-results/<run id>/<hash>.json --me
 
 Analysis is exact, so its cost grows with the size of the model. On the
 reference machine, ten three-valued parameters with 1,000 rows take about
-31 ms at strength two and 85 ms at strength three. The method, all
+31 ms at strength two, 84 ms at strength three and 194 ms at strength four. The method, all
 scenarios and the measured numbers are in [benchmarks/](benchmarks/);
 `npm run bench` reruns them on your machine.
 
@@ -287,7 +287,9 @@ scenarios and the measured numbers are in [benchmarks/](benchmarks/);
   guarantee finding faults that need three or more parameters.
 - Domains must be finite and chosen by you; there is no automatic
   partitioning or boundary discovery.
-- Strength is two or three. Analysis is exact and bounded: models over the
+- Strength is two to six; every interaction in a model has the same strength.
+  Higher strengths grow quickly, so large models may exceed the limits.
+- Analysis is exact and bounded: models over the
   resource limits are rejected rather than approximated.
 - Generated configurations are test data. You still arrange the state,
   exercise the behaviour and write the assertions.

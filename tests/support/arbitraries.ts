@@ -30,7 +30,7 @@ function ruleArb(parameters: Record<string, Value[]>): fc.Arbitrary<Rule> {
 }
 
 export const modelArb: fc.Arbitrary<ReferenceModel> = fc
-  .integer({ min: 2, max: 4 })
+  .integer({ min: 2, max: 5 })
   .chain((n) =>
     fc.tuple(
       fc.shuffledSubarray(NAMES, { minLength: n, maxLength: n }),
@@ -40,7 +40,7 @@ export const modelArb: fc.Arbitrary<ReferenceModel> = fc
   .chain(([names, domains]) => {
     const parameters = Object.fromEntries(names.map((name, i) => [name, domains[i] ?? [0]]));
     return fc.record({
-      strength: fc.integer({ min: 2, max: Math.min(3, names.length) }),
+      strength: fc.integer({ min: 2, max: names.length }),
       parameters: fc.constant(parameters),
       constraints: fc
         .array(ruleArb(parameters), { maxLength: 2 })

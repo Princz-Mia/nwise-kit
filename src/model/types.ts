@@ -1,7 +1,15 @@
 /** A single value of a parameter domain. Each domain holds one type. */
 export type DomainValue = string | number | boolean;
 
-export type Strength = 2 | 3;
+/**
+ * How many parameters an interaction combines: 2 is pairwise, 3 is
+ * three-way, and so on up to 6, the highest interaction strength at
+ * which empirical studies have found faults.
+ */
+export type Strength = 2 | 3 | 4 | 5 | 6;
+
+export const MIN_STRENGTH = 2;
+export const MAX_STRENGTH = 6;
 
 /** A constraint expression. Each expression object has exactly one operator. */
 export type Expression =

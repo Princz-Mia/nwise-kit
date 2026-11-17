@@ -18,7 +18,8 @@ Nothing has been published to npm yet. The first preview will be
   problem. Duplicate JSON keys are rejected.
 - Matrices of existing test cases, rejected rather than trimmed when a row
   is incomplete, has unknown parameters or breaks a constraint.
-- Exact pairwise and three-way coverage over globally valid interactions,
+- Exact n-wise coverage, from pairwise (2) up to six-way, over globally
+  valid interactions,
   with per-group counts, every missing interaction, and a coverage profile
   from single values up to the model strength.
 - Deterministic greedy recommendations to supplement a matrix, with a case

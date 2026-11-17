@@ -7,29 +7,67 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "strength", "parameters"],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "id": { "$ref": "#/$defs/identifier" },
-    "strength": { "enum": [2, 3] },
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "strength": {
+      "enum": [2, 3, 4, 5, 6]
+    },
     "parameters": {
       "type": "object",
       "minProperties": 2,
-      "propertyNames": { "minLength": 1 },
-      "additionalProperties": { "$ref": "#/$defs/domain" }
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/domain"
+      }
     },
     "constraints": {
       "type": "array",
-      "items": { "$ref": "#/$defs/constraint" }
+      "items": {
+        "$ref": "#/$defs/constraint"
+      }
     }
   },
   "$defs": {
-    "identifier": { "type": "string", "minLength": 1 },
-    "value": { "type": ["string", "number", "boolean"] },
+    "identifier": {
+      "type": "string",
+      "minLength": 1
+    },
+    "value": {
+      "type": ["string", "number", "boolean"]
+    },
     "domain": {
       "description": "A non-empty list of distinct values of one type.",
       "oneOf": [
-        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
-        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "number" } },
-        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "boolean" } }
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "number"
+          }
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "boolean"
+          }
+        }
       ]
     },
     "constraint": {
@@ -37,8 +75,12 @@
       "additionalProperties": false,
       "required": ["id", "rule"],
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
-        "rule": { "$ref": "#/$defs/expression" }
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "rule": {
+          "$ref": "#/$defs/expression"
+        }
       }
     },
     "expression": {
@@ -51,7 +93,14 @@
           "properties": {
             "eq": {
               "type": "array",
-              "prefixItems": [{ "$ref": "#/$defs/identifier" }, { "$ref": "#/$defs/value" }],
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/identifier"
+                },
+                {
+                  "$ref": "#/$defs/value"
+                }
+              ],
               "minItems": 2,
               "maxItems": 2
             }
@@ -61,14 +110,24 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["not"],
-          "properties": { "not": { "$ref": "#/$defs/expression" } }
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/expression"
+            }
+          }
         },
         {
           "type": "object",
           "additionalProperties": false,
           "required": ["and"],
           "properties": {
-            "and": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/expression" } }
+            "and": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            }
           }
         },
         {
@@ -76,7 +135,13 @@
           "additionalProperties": false,
           "required": ["or"],
           "properties": {
-            "or": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/expression" } }
+            "or": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            }
           }
         },
         {
@@ -88,7 +153,9 @@
               "type": "array",
               "minItems": 2,
               "maxItems": 2,
-              "items": { "$ref": "#/$defs/expression" }
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
             }
           }
         }

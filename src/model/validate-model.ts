@@ -11,7 +11,7 @@ import {
   isRecord,
 } from './shape.js';
 import type { Constraint, DomainValue, Expression, Model, Parameter, Strength } from './types.js';
-import { compareCodeUnits } from './types.js';
+import { compareCodeUnits, MAX_STRENGTH, MIN_STRENGTH } from './types.js';
 
 const OPERATORS = ['eq', 'not', 'and', 'or', 'implies'] as const;
 type Operator = (typeof OPERATORS)[number];
@@ -100,11 +100,12 @@ function checkStrength(
   value: unknown,
   parameterCount: number | undefined,
 ): Strength | undefined {
-  if (value !== 2 && value !== 3) {
+  if (!isStrength(value)) {
     issues.error(
       'UNSUPPORTED_STRENGTH',
       '/strength',
-      `Strength must be 2 or 3, not ${shown(value)}`,
+      `Strength must be a whole number from ${String(MIN_STRENGTH)} to ${String(MAX_STRENGTH)}, not ${shown(value)}`,
+      'Use 2 for pairwise coverage or 3 for three-way coverage.',
     );
     return undefined;
   }
@@ -390,4 +391,13 @@ function shown(value: unknown): string {
   return typeof value === 'number' || typeof value === 'string'
     ? JSON.stringify(value)
     : describe(value);
+}
+
+function isStrength(value: unknown): value is Strength {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_STRENGTH &&
+    value <= MAX_STRENGTH
+  );
 }
