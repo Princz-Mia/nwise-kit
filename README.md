@@ -285,6 +285,64 @@ npx vitest run
 node dist/cli/index.js check --input nwise-kit-results/<run id>/<hash>.json --metric passed --min-coverage 90
 ```
 
+## Compatibility
+
+- **Any application.** The command line and the library work on JSON files
+  that describe your parameters and test cases, so they do not depend on
+  what you build: React, Vue, Angular or Svelte front ends, APIs and
+  services are all the same to them.
+- **JavaScript and TypeScript.** The package ships compiled JavaScript with
+  type declarations. It is an ES module; CommonJS code can also
+  `require('nwise-kit')` on the supported Node.js versions.
+- **Node.js** 22.13 or later (the 22, 24 and 26 lines).
+- **Package managers.** Installing the packed archive is tested with npm on
+  every change, and was checked by hand with pnpm, Yarn 1 and Yarn 4 (with
+  `nodeLinker: node-modules`). `npx nwise-kit` runs the command line without
+  installing it.
+- **Test runners.** Declared coverage, recommendations and reports work
+  with any runner, since they only read your matrix. Observed and passed
+  coverage need Vitest 5.1. That was checked with React and Vue component
+  tests in a DOM environment; Angular's Vitest setup, Vitest's browser and
+  watch modes, Jest, Mocha and Playwright are not supported for runtime
+  coverage.
+
+## Library
+
+Everything the command line does is available as functions. They are
+synchronous, do no file or network access, and throw a `NwiseKitError`
+with a `code` and path-specific `diagnostics` for invalid input.
+
+```ts
+import { analyzeMatrix, suggestCases } from 'nwise-kit';
+
+const analysis = analyzeMatrix({ model, cases: matrix.cases });
+console.log(analysis.metrics.declared, analysis.missing.declared);
+
+const suggestions = suggestCases({
+  model,
+  cases: matrix.cases,
+  targetCoverage: 100,
+  maxNewCases: 10,
+});
+```
+
+| Function                                    | What it does                                                           |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| `analyzeMatrix`                             | Exact declared coverage, missing interactions and the coverage profile |
+| `analyzeRun`                                | Declared, observed and passed coverage from a test run's evidence      |
+| `suggestCases`                              | Recommendations from declared, observed or passed coverage             |
+| `matrixWithSuggestions`                     | The existing cases plus the recommended new ones, as a matrix          |
+| `createStaticReport`, `createRuntimeReport` | Versioned reports that embed their inputs                              |
+| `readReport`                                | Reads a report and recomputes every count, rejecting edited ones       |
+| `checkCoverage`                             | Compares one metric of a report with a threshold, exactly              |
+| `parseJson`                                 | `JSON.parse` that rejects duplicate keys                               |
+| `validateModel`, `validateMatrix`           | Validation on its own, with every problem reported                     |
+| `createMatrixSuite` (`nwise-kit/vitest`)    | Binds Vitest tests to matrix cases                                     |
+| `NwiseKitReporter` (`nwise-kit/reporter`)   | Writes runtime reports during a Vitest run                             |
+
+All options and result types are exported and documented in the type
+declarations.
+
 ## Performance
 
 Analysis is exact, so its cost grows with the size of the model. On the
@@ -292,6 +350,24 @@ reference machine, ten three-valued parameters with 1,000 rows take about
 31 ms at strength two, 84 ms at strength three and 194 ms at strength four. The method, all
 scenarios and the measured numbers are in [benchmarks/](benchmarks/);
 `npm run bench` reruns them on your machine.
+
+## Security
+
+- The package has no runtime dependencies, makes no network requests and
+  collects no telemetry. Nothing runs when it is installed.
+- The command line reads only the files you name and writes only the
+  outputs you name: atomically, never over an input, and over an existing
+  file only with `--force`.
+- Input is treated as untrusted. Models, matrices and reports are validated
+  strictly, analysis is bounded by explicit limits, and reading a report
+  recomputes its counts instead of trusting them, with a ceiling on the
+  resources a report may ask for.
+- Values from your files are shown as data: escaped in HTML pages, which
+  also block all network access, and with control characters neutralised
+  in terminal output.
+
+Please report a suspected vulnerability privately to the maintainer rather
+than in a public issue.
 
 ## Limitations
 
