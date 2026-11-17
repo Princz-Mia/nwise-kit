@@ -47,9 +47,9 @@ puts these ideas from the course's test design material into a tool:
   number of parameters, where every valid configuration must be tested.
 - **Finding a smallest suite that covers every combination (a covering
   array) is NP-hard.** Generators such as PICT and ACTS build suites from
-  scratch; NwiseKit starts from the suite you already have and uses a
-  deterministic greedy heuristic to supplement it, which is not
-  guaranteed to be minimal.
+  scratch. NwiseKit can do that too, but it starts from the suite you
+  already have when there is one, and uses a deterministic greedy
+  heuristic to supplement it, which is not guaranteed to be minimal.
 - **Coverage can be an exit criterion.** A coverage threshold can gate a
   CI pipeline, as statement coverage often does.
 
@@ -185,17 +185,28 @@ them. A search that stops early, at `--max-new-cases` or at the work limit,
 still exits 0 and says why; add `--require-target` to make an unmet target
 exit 1.
 
-To build a suite from scratch, leave out `--cases`. With `--matrix-out` the
-result is written as a matrix file you can use straight away: your existing
-cases followed by the new ones, named `suggested-001`, `suggested-002` and
-so on.
+`generate` writes the test cases themselves: a matrix that covers every
+valid interaction of the model strength, ready for `analyze` or the
+Vitest integration.
 
 ```bash
-node dist/cli/index.js suggest --model examples/os-cpu-protocol/model.json --out suggestions.json --matrix-out cases.json --max-new-cases 20
+node dist/cli/index.js generate --model examples/os-cpu-protocol/model.json --out cases.json
 ```
 
-For that model it produces four test cases that cover all 12 pairs, where
-testing every combination would need eight.
+For that model it writes four test cases that cover all 12 pairs, where
+testing every combination would need eight. The strength in the model
+decides how thorough the suite is: at 1 every value appears in some test
+(two cases here), and at the number of parameters every valid
+configuration is a test (eight here). With `--cases` it keeps your
+existing cases and adds only what they miss. New cases are named
+`suggested-001`, `suggested-002` and so on; they are configurations, so
+the assertions are still yours to write. It adds as many cases as the
+target needs unless you pass `--max-new-cases`, and exits 1 if the matrix
+it wrote falls short of `--target`.
+
+`suggest` can write the same matrix next to its recommendations with
+`--matrix-out <file>`, and builds a suite from scratch when `--cases` is
+left out.
 
 After a test run, `--basis observed --run <runtime report>` or `--basis passed`
 starts from what the run actually counted. A useful configuration that is
@@ -216,12 +227,12 @@ pick, diagnostics, and, with `--suggestions`, the projected recommendations.
 Very long lists are cut short on the page with a notice; the exact counts
 and the JSON report stay complete.
 
-| Exit code | Meaning                                                                                |
-| --------- | -------------------------------------------------------------------------------------- |
-| 0         | Success; any requested gate passed                                                     |
-| 1         | A coverage gate, or a target required with `--require-target`, was not met             |
-| 2         | Invalid arguments, model, matrix or report, an unavailable metric, unsatisfiable model |
-| 3         | Incomplete analysis, a resource limit, an I/O failure or an internal error             |
+| Exit code | Meaning                                                                                       |
+| --------- | --------------------------------------------------------------------------------------------- |
+| 0         | Success; any requested gate passed                                                            |
+| 1         | A coverage gate, a target required with `--require-target` or a `generate` target was not met |
+| 2         | Invalid arguments, model, matrix or report, an unavailable metric, unsatisfiable model        |
+| 3         | Incomplete analysis, a resource limit, an I/O failure or an internal error                    |
 
 Models, matrices, reports and suggestions have JSON Schemas in [schemas/](schemas/),
 which editors can use for validation and completion. The tool checks more

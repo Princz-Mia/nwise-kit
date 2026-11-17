@@ -28,9 +28,13 @@ it is released.
   what a test run observed or passed, including `rerun-existing` advice.
   Without existing cases the same search builds a suite from scratch, and
   `--matrix-out` writes the result as a ready-to-use matrix.
+- Test case generation: `generate` writes a matrix that reaches the target
+  coverage at the model strength, from scratch or by extending existing
+  cases.
 - Versioned static and runtime reports whose counts are recomputed when
   read back, so edited reports are rejected.
-- Command line: `analyze`, `check`, `suggest` and `report`, with documented
+- Command line: `analyze`, `check`, `suggest`, `generate` and `report`, with
+  documented
   exit codes, atomic writes that never replace inputs, and offline HTML
   pages.
 - Vitest integration: `createMatrixSuite` from `nwise-kit/vitest` and
