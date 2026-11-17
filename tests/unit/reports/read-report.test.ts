@@ -117,6 +117,22 @@ describe('readReport', () => {
     expect(rejection({ ...stored(), schemaVersion: 2 }).code).toBe('UNSUPPORTED_SCHEMA_VERSION');
   });
 
+  test('refuses to recompute with limits above the ceiling of the reader', () => {
+    const raised = createStaticReport({
+      model: golden,
+      matrix: { schemaVersion: 1, modelId: 'golden', cases: goldenRows('000', '111') },
+      limits: { maxRawConfigurations: 5_000_000, analysisTimeMs: 600_000 },
+      toolVersion: '1.2.3',
+    });
+    const text = JSON.parse(formatReport(raised)) as unknown;
+    expect(issues(text)).toEqual([
+      ['LIMIT_TOO_HIGH', '/limits/maxRawConfigurations'],
+      ['LIMIT_TOO_HIGH', '/limits/analysisTimeMs'],
+    ]);
+    const allowed = { maxRawConfigurations: 5_000_000, analysisTimeMs: 600_000 };
+    expect(readReport(text, { maxLimits: allowed }).limits.maxRawConfigurations).toBe(5_000_000);
+  });
+
   test('stops as incomplete when the embedded limits are too low to recompute', () => {
     const edited = stored();
     edited.limits.maxValidConfigurations = 2;

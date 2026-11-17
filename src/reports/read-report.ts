@@ -4,7 +4,7 @@ import { canonicalJson } from '../model/canonical.js';
 import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
 import { validateMatrix } from '../model/cases.js';
 import type { Limits } from '../model/limits.js';
-import { resolveLimits } from '../model/limits.js';
+import { DEFAULT_LIMITS, resolveLimits } from '../model/limits.js';
 import { validateModel } from '../model/validate-model.js';
 import { checkIdentifier, checkObject, Issues } from '../model/shape.js';
 import type { Report } from './report.js';
@@ -60,6 +60,15 @@ const EMBEDDED_ERRORS: readonly ErrorCode[] = [
   'INVALID_EVIDENCE',
 ];
 
+export interface ReadReportOptions {
+  /**
+   * The highest limits a report may ask to be recomputed with. A report
+   * carries its own limits, so without a ceiling a crafted file could
+   * make reading it arbitrarily expensive. Defaults to the default limits.
+   */
+  readonly maxLimits?: Partial<Limits>;
+}
+
 /**
  * Reads a static or runtime report produced earlier and checks it. Every
  * count is recomputed from the embedded model, matrix, limits and, for a
@@ -68,7 +77,7 @@ const EMBEDDED_ERRORS: readonly ErrorCode[] = [
  * report pass. A valid structure or hash does not prove where the report
  * came from.
  */
-export function readReport(input: unknown): Report {
+export function readReport(input: unknown, options: ReadReportOptions = {}): Report {
   const issues = new Issues();
   const runtime =
     typeof input === 'object' && input !== null && (input as { kind?: unknown }).kind === 'runtime';
@@ -107,7 +116,7 @@ export function readReport(input: unknown): Report {
     throw invalid(issues.diagnostics);
   }
 
-  const fresh = recompute(input);
+  const fresh = recompute(input, { ...DEFAULT_LIMITS, ...options.maxLimits });
   const mismatches: Diagnostic[] = DERIVED_KEYS.filter(
     (key) =>
       canonicalJson(input[key]) !==
@@ -125,8 +134,22 @@ export function readReport(input: unknown): Report {
   return { ...fresh, durationMs: duration as number };
 }
 
-function recompute(input: Record<string, unknown>): Report {
+function recompute(input: Record<string, unknown>, maxLimits: Limits): Report {
   const limits = within('/limits', () => resolveLimits(input['limits'] as Partial<Limits>));
+  const tooHigh = (Object.keys(limits) as (keyof Limits)[]).filter(
+    (key) => limits[key] > maxLimits[key],
+  );
+  if (tooHigh.length > 0) {
+    throw invalid(
+      tooHigh.map((key) => ({
+        code: 'LIMIT_TOO_HIGH',
+        severity: 'error',
+        message: `The report asks for ${key} ${String(limits[key])}; this reader allows ${String(maxLimits[key])}`,
+        path: `/limits/${key}`,
+        hint: 'Recomputing would use more resources than allowed. Raise maxLimits when reading only if you trust the report.',
+      })),
+    );
+  }
   const model = within('/model', () => validateModel(input['model'], limits));
   within('/matrix', () => {
     checkCasesSatisfyConstraints(model, validateMatrix(input['matrix'], model));

@@ -68,25 +68,26 @@ export function renderHtml(report: Report, suggestions?: SuggestionsFile): strin
       ];
     }),
   );
-  const outcomes = runtime
-    ? Object.fromEntries(
-        report.evidence.tests.map((t) => [
+  // Parameters, values and outcomes are embedded as arrays in a fixed order,
+  // so the page never looks anything up by a user-chosen name such as
+  // "constructor" or "__proto__".
+  const names = Object.keys(report.model.parameters).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const outcomes = new Map(
+    runtime
+      ? report.evidence.tests.map((t) => [
           t.caseId,
-          {
-            outcome: t.outcome,
-            attempts: t.attempts,
-            checkpoints: t.checkpointAttempts,
-            name: t.name,
-          },
-        ]),
-      )
-    : {};
+          { outcome: t.outcome, attempts: t.attempts, checkpoints: t.checkpointAttempts },
+        ])
+      : [],
+  );
   const data = {
-    parameters: Object.keys(report.model.parameters).sort(),
-    domains: report.model.parameters,
-    cases: report.matrix.cases,
+    parameters: names.map((name) => ({ name, values: report.model.parameters[name] ?? [] })),
+    cases: report.matrix.cases.map((c) => ({
+      id: c.id,
+      values: names.map((name) => c.values[name] ?? null),
+      run: outcomes.get(c.id) ?? null,
+    })),
     missing,
-    outcomes,
     limit: HTML_MISSING_LIMIT,
   };
 
@@ -232,25 +233,27 @@ ${diagnosticRows || '<tr><td colspan="4" class="muted">None</td></tr>'}
     document.getElementById('count').textContent = note;
   }
   metric.addEventListener('change', showMissing); filter.addEventListener('input', showMissing); showMissing();
-  var pickers = document.getElementById('pickers'), selects = {};
-  data.parameters.forEach(function (name) {
-    var label = el('label', name + ' '), select = el('select');
+  var pickers = document.getElementById('pickers'), selects = [];
+  data.parameters.forEach(function (parameter) {
+    var label = el('label', parameter.name + ' '), select = el('select');
     var any = el('option', 'any'); any.value = ''; select.appendChild(any);
-    data.domains[name].forEach(function (value, i) { var o = el('option', String(value)); o.value = String(i); select.appendChild(o); });
-    select.addEventListener('change', showCases); selects[name] = select; label.appendChild(select); pickers.appendChild(label);
+    parameter.values.forEach(function (value, i) { var o = el('option', String(value)); o.value = String(i); select.appendChild(o); });
+    select.addEventListener('change', showCases); selects.push(select); label.appendChild(select); pickers.appendChild(label);
   });
+  function note(body, text) { var tr = el('tr'), td = el('td', text, 'muted'); td.colSpan = 3; tr.appendChild(td); body.appendChild(tr); }
   function showCases() {
     var body = document.getElementById('cases'); body.textContent = '';
-    var chosen = data.parameters.filter(function (n) { return selects[n].value !== ''; });
-    if (chosen.length === 0) { var tr0 = el('tr'); var td0 = el('td', 'Choose at least one value.', 'muted'); td0.colSpan = 3; tr0.appendChild(td0); body.appendChild(tr0); return; }
+    var chosen = [];
+    selects.forEach(function (select, p) { if (select.value !== '') chosen.push(p); });
+    if (chosen.length === 0) { note(body, 'Choose at least one value.'); return; }
     var hits = data.cases.filter(function (c) {
-      return chosen.every(function (n) { return c.values[n] === data.domains[n][Number(selects[n].value)]; });
+      return chosen.every(function (p) { return c.values[p] === data.parameters[p].values[Number(selects[p].value)]; });
     });
-    if (hits.length === 0) { var tr1 = el('tr'); var td1 = el('td', 'No case contains these values.', 'muted'); td1.colSpan = 3; tr1.appendChild(td1); body.appendChild(tr1); }
+    if (hits.length === 0) note(body, 'No case contains these values.');
     hits.forEach(function (c) {
-      var tr = el('tr'), r = data.outcomes[c.id];
+      var tr = el('tr'), r = c.run;
       tr.appendChild(el('td', c.id));
-      tr.appendChild(el('td', data.parameters.map(function (n) { return n + '=' + String(c.values[n]); }).join(', ')));
+      tr.appendChild(el('td', data.parameters.map(function (parameter, p) { return parameter.name + '=' + String(c.values[p]); }).join(', ')));
       tr.appendChild(el('td', r ? r.outcome + ', ' + r.attempts + ' attempt(s), checkpoint in ' + (r.checkpoints.length ? r.checkpoints.join(', ') : 'none') : 'not run'));
       body.appendChild(tr);
     });

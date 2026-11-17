@@ -50,3 +50,6 @@ suite.test('late-cover', ({ cover }) => {
 test('calls a checkpoint after its test ended', () => {
   late?.();
 });
+test('carries foreign metadata under the same key', ({ task }) => {
+  (task.meta as Record<string, unknown>)['nwiseKit'] = { protocol: 99, caseId: '../escape' };
+});

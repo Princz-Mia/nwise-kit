@@ -193,6 +193,16 @@ console.log('core ok');
 `,
   );
   run(process.execPath, ['check.mjs'], dir);
+  // CommonJS projects can load the core with require() on current Node.js.
+  writeFileSync(
+    join(dir, 'check.cjs'),
+    `const { analyzeMatrix, NwiseKitError } = require('nwise-kit');
+if (typeof analyzeMatrix !== 'function' || typeof NwiseKitError !== 'function') {
+  throw new Error('require("nwise-kit") did not expose the API');
+}
+`,
+  );
+  run(process.execPath, ['check.cjs'], dir);
   const version = run('npm', ['exec', '--no', '--', 'nwise-kit', '--version'], dir).stdout.trim();
   if (version !== manifest.version) {
     fail(`nwise-kit --version printed "${version}", expected "${manifest.version}"`);

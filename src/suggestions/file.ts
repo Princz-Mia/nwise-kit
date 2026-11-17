@@ -1,3 +1,4 @@
+import { parseThreshold } from '../coverage/threshold.js';
 import { NwiseKitError } from '../errors.js';
 import { checkObject, Issues, isRecord } from '../model/shape.js';
 import type { SuggestionResult } from './greedy.js';
@@ -54,20 +55,64 @@ const FILE_KEYS = [
   'durationMs',
 ] as const;
 
+function isCount(value: unknown, min: number): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= min;
+}
+
 function isMetric(value: unknown): boolean {
   if (!isRecord(value)) {
     return false;
   }
   const { covered, total, percentage } = value;
   return (
-    Number.isSafeInteger(covered) && Number.isSafeInteger(total) && typeof percentage === 'number'
+    isCount(covered, 0) &&
+    isCount(total, 1) &&
+    covered <= total &&
+    typeof percentage === 'number' &&
+    Number.isFinite(percentage)
   );
 }
 
+function isDomainValue(value: unknown): boolean {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+  );
+}
+
+function isRecommendation(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value['kind'] === 'add-case' || value['kind'] === 'rerun-existing') &&
+    isRecord(value['values']) &&
+    Object.values(value['values']).every(isDomainValue) &&
+    Array.isArray(value['matchedCaseIds']) &&
+    value['matchedCaseIds'].every((id: unknown) => typeof id === 'string') &&
+    isCount(value['gain'], 1) &&
+    isMetric(value['projected'])
+  );
+}
+
+const BASES: readonly unknown[] = ['declared', 'observed', 'passed'];
+const STOP_REASONS: readonly unknown[] = ['target-reached', 'case-budget', 'work-budget'];
+
+function isTarget(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  try {
+    parseThreshold(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Reads a suggestions file for display. It checks the structure the
- * display relies on and that the file belongs to the expected matrix;
- * recommendations are projections, so nothing is recomputed.
+ * Reads a suggestions file for display. Every field that is shown is
+ * checked, and the file must belong to the expected matrix.
+ * Recommendations are projections, so nothing is recomputed.
  */
 export function readSuggestionsFile(input: unknown, matrixHash: string): SuggestionsFile {
   const issues = new Issues();
@@ -86,23 +131,36 @@ export function readSuggestionsFile(input: unknown, matrixHash: string): Suggest
         'The suggestions were made for a different matrix',
       );
     }
-    const recommendations = input['recommendations'];
-    if (
-      !Array.isArray(recommendations) ||
-      !recommendations.every(
-        (r: unknown) =>
-          isRecord(r) &&
-          (r['kind'] === 'add-case' || r['kind'] === 'rerun-existing') &&
-          isRecord(r['values']) &&
-          Array.isArray(r['matchedCaseIds']) &&
-          Number.isSafeInteger(r['gain']) &&
-          isMetric(r['projected']),
-      )
-    ) {
-      issues.error('INVALID_TYPE', '/recommendations', 'Recommendations are malformed');
+    const invalid = (path: string, message: string): void => {
+      issues.error('INVALID_TYPE', path, message);
+    };
+    if (!BASES.includes(input['basis'])) {
+      invalid('/basis', 'basis must be declared, observed or passed');
     }
-    if (!isMetric(input['baseline']) || !isMetric(input['projected'])) {
-      issues.error('INVALID_TYPE', '/baseline', 'Baseline and projected coverage must be metrics');
+    if (!STOP_REASONS.includes(input['stopReason'])) {
+      invalid('/stopReason', 'stopReason must be target-reached, case-budget or work-budget');
+    }
+    if (!isTarget(input['target'])) {
+      invalid('/target', 'target must be a percentage such as "100" or "99.5"');
+    }
+    if (typeof input['targetReached'] !== 'boolean') {
+      invalid('/targetReached', 'targetReached must be true or false');
+    }
+    const recommendations = input['recommendations'];
+    if (!Array.isArray(recommendations)) {
+      invalid('/recommendations', 'recommendations must be an array');
+    } else {
+      recommendations.forEach((recommendation: unknown, i) => {
+        if (!isRecommendation(recommendation)) {
+          invalid(`/recommendations/${String(i)}`, 'This recommendation is malformed');
+        }
+      });
+    }
+    if (!isMetric(input['baseline'])) {
+      invalid('/baseline', 'baseline must be a coverage metric');
+    }
+    if (!isMetric(input['projected'])) {
+      invalid('/projected', 'projected must be a coverage metric');
     }
   }
   if (issues.count > 0) {
