@@ -12,7 +12,17 @@ import type { Model } from '../model/types.js';
  */
 export const MAX_INTERACTION_CELLS = 1 << 26;
 
-/** How often, in enumerated assignments, the wall clock is checked. */
+/**
+ * Upper bound on parameter groups across the strengths from 1 to the
+ * model strength. Their number grows combinatorially with the strength,
+ * and every valid configuration updates each of them.
+ */
+export const MAX_PARAMETER_GROUPS = 1 << 17;
+
+/**
+ * How much work passes between looks at the wall clock. One unit is a
+ * constraint check of an assignment or an update of one parameter group.
+ */
 const CLOCK_INTERVAL = 4096;
 
 /** A set of `t` parameters whose value combinations form interactions. */
@@ -94,12 +104,21 @@ export function buildUniverse(
     );
   }
 
+  if (countGroups(n, strength, MAX_PARAMETER_GROUPS) > MAX_PARAMETER_GROUPS) {
+    throw incomplete(
+      'PARAMETER_GROUPS_EXCEEDED',
+      `Strength ${String(strength)} over ${String(n)} parameters needs more than ${String(MAX_PARAMETER_GROUPS)} parameter groups`,
+      'Lower the strength or remove parameters.',
+    );
+  }
   const levelGroups = Array.from({ length: strength }, (_, i) => buildGroups(sizes, i + 1));
+  const groupCount = levelGroups.reduce((sum, groups) => sum + groups.length, 0);
   const cells = levelGroups.flat().reduce((sum, g) => sum + g.size, 0);
   if (cells > MAX_INTERACTION_CELLS) {
     throw incomplete(
       'INTERACTION_CELLS_EXCEEDED',
       `The parameter groups have ${String(cells)} value combinations; at most ${String(MAX_INTERACTION_CELLS)} fit in memory`,
+      'Lower the strength, or reduce parameters or domain values.',
     );
   }
   const valid = levelGroups.map((groups) => groups.map((g) => new Uint8Array(g.size)));
@@ -111,12 +130,12 @@ export function buildUniverse(
   const found: number[] = [];
   let validCount = 0;
   const x = new Int32Array(n);
-  let visited = 0;
+  let work = 0;
   const total = Number(raw);
 
   for (let k = 0; k < total; k++) {
-    if (++visited === CLOCK_INTERVAL) {
-      visited = 0;
+    if (++work >= CLOCK_INTERVAL) {
+      work = 0;
       if (now() - started > limits.analysisTimeMs) {
         throw incomplete(
           'ANALYSIS_TIME_EXCEEDED',
@@ -134,6 +153,7 @@ export function buildUniverse(
       for (let i = 0; i < n; i++) {
         found.push(x[i] ?? 0);
       }
+      work += groupCount;
       for (let l = 0; l < strength; l++) {
         const groups = levelGroups[l] as Group[];
         const levelValid = valid[l] as Uint8Array[];
@@ -194,6 +214,20 @@ export function buildUniverse(
     // Single-parameter groups are in parameter order, so group p's cells are p's values.
     diagnostics: unreachableValues(model, single.valid),
   };
+}
+
+/**
+ * How many parameter sets of 1 to `t` out of `n` parameters there are.
+ * Counting stops once the result passes `cap`, so it stays exact.
+ */
+function countGroups(n: number, t: number, cap: number): number {
+  let count = 0;
+  let sets = 1;
+  for (let size = 1; size <= t && count <= cap; size++) {
+    sets = (sets * (n - size + 1)) / size;
+    count += sets;
+  }
+  return count;
 }
 
 /** All `t`-element parameter sets in lexicographic order of positions. */
@@ -270,13 +304,12 @@ function unreachableValues(model: Model, reachable: readonly Uint8Array[]): Diag
   return diagnostics;
 }
 
-function incomplete(code: string, message: string): NwiseKitError {
+function incomplete(
+  code: string,
+  message: string,
+  hint = 'Reduce the model, or raise the corresponding limit if resources allow.',
+): NwiseKitError {
   return new NwiseKitError('ANALYSIS_INCOMPLETE', message, [
-    {
-      code,
-      severity: 'error',
-      message: `${message}; no partial result is reported`,
-      hint: 'Reduce the model, or raise the corresponding limit if resources allow.',
-    },
+    { code, severity: 'error', message: `${message}; no partial result is reported`, hint },
   ]);
 }

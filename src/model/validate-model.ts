@@ -11,7 +11,7 @@ import {
   isRecord,
 } from './shape.js';
 import type { Constraint, DomainValue, Expression, Model, Parameter, Strength } from './types.js';
-import { compareCodeUnits, MAX_STRENGTH, MIN_STRENGTH } from './types.js';
+import { compareCodeUnits, MIN_STRENGTH } from './types.js';
 
 const OPERATORS = ['eq', 'not', 'and', 'or', 'implies'] as const;
 type Operator = (typeof OPERATORS)[number];
@@ -104,8 +104,8 @@ function checkStrength(
     issues.error(
       'UNSUPPORTED_STRENGTH',
       '/strength',
-      `Strength must be a whole number from ${String(MIN_STRENGTH)} to ${String(MAX_STRENGTH)}, not ${shown(value)}`,
-      'Use 2 for pairwise coverage or 3 for three-way coverage.',
+      `Strength must be a whole number of at least ${String(MIN_STRENGTH)}, not ${shown(value)}`,
+      'Use 1 for every single value, 2 for pairwise or 3 for three-way coverage, up to the number of parameters.',
     );
     return undefined;
   }
@@ -114,6 +114,7 @@ function checkStrength(
       'STRENGTH_EXCEEDS_PARAMETERS',
       '/strength',
       `Strength ${value} needs at least ${value} parameters; the model has ${parameterCount}`,
+      `Use a strength from ${String(MIN_STRENGTH)} to ${parameterCount}.`,
     );
     return undefined;
   }
@@ -394,10 +395,5 @@ function shown(value: unknown): string {
 }
 
 function isStrength(value: unknown): value is Strength {
-  return (
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= MIN_STRENGTH &&
-    value <= MAX_STRENGTH
-  );
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= MIN_STRENGTH;
 }

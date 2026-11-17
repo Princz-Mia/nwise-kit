@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:nwise-kit:schema:model:1",
   "title": "NwiseKit model",
-  "description": "Parameters with finite domains, constraints that exclude impossible combinations, and the interaction strength to measure. The tool additionally checks that constraints only reference known parameters and in-domain values, limits nesting depth and size, and rejects integers outside the safe range.",
+  "description": "Parameters with finite domains, constraints that exclude impossible combinations, and the interaction strength to measure. The tool additionally checks that the strength does not exceed the number of parameters, that constraints only reference known parameters and in-domain values, limits nesting depth and size, and rejects integers outside the safe range.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "strength", "parameters"],
@@ -14,7 +14,8 @@
       "$ref": "#/$defs/identifier"
     },
     "strength": {
-      "enum": [2, 3, 4, 5, 6]
+      "type": "integer",
+      "minimum": 1
     },
     "parameters": {
       "type": "object",

@@ -60,6 +60,17 @@ describe('renderSummary', () => {
     expect(renderSummary(full)).toContain('No valid pairs are missing.');
   });
 
+  test('calls strength-one interactions values', () => {
+    const eachChoice = createStaticReport({
+      model: { ...golden, strength: 1 },
+      matrix: { schemaVersion: 1, modelId: 'golden', cases: goldenRows('000') },
+      toolVersion: '1.2.3',
+    });
+    const output = renderSummary(eachChoice);
+    expect(output).toContain('6 valid values');
+    expect(output).toContain('By strength: 1-way 3/6 (50.00%)');
+  });
+
   test('names interactions above three-way by their strength', () => {
     const parameters = Object.fromEntries(['a', 'b', 'c', 'd'].map((n) => [n, [0, 1]]));
     const fourWay = createStaticReport({

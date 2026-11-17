@@ -17,8 +17,9 @@ interactions, and recommends extra configurations to close the gaps.
 A suite can try every value of every parameter and still miss the
 combinations that matter. Line and branch coverage say which code ran,
 not which combinations of inputs were tried. NwiseKit answers a
-different question: _of all valid pairs (or triples, up to six-way combinations) of parameter
-values, which ones does my suite exercise, and which are missing?_
+different question: _of all valid pairs (or triples, or combinations of
+any number of parameters) of parameter values, which ones does my suite
+exercise, and which are missing?_
 
 ## Background
 
@@ -42,7 +43,8 @@ puts these ideas from the course's test design material into a tool:
 - **Many failures need two or more interacting parameters**, sometimes up
   to six, according to the empirical studies by Kuhn et al. Pairwise
   coverage does not guarantee finding faults that involve three or more
-  parameters; strengths up to six are supported for that reason.
+  parameters, so the strength is yours to choose: from one up to the
+  number of parameters, where every valid configuration must be tested.
 - **Finding a smallest suite that covers every combination (a covering
   array) is NP-hard.** Generators such as PICT and ACTS build suites from
   scratch; NwiseKit starts from the suite you already have and uses a
@@ -53,15 +55,15 @@ puts these ideas from the course's test design material into a tool:
 
 ## Concepts
 
-| Term                | Meaning                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| Parameter, domain   | A named input dimension and its finite list of values.                                      |
-| Constraint          | A rule that excludes impossible combinations, such as "guests are always on the free plan". |
-| Valid configuration | A value for every parameter that satisfies every constraint.                                |
-| Interaction         | Values for `t` distinct parameters, such as `role=guest` and `region=US`.                   |
-| Strength `t`        | How many parameters an interaction combines: 2 for pairwise, 3 for three-way, up to 6.      |
-| Valid interaction   | One that appears in at least one valid configuration, considering all constraints at once.  |
-| Coverage            | Covered valid interactions divided by all valid interactions, summed over every group.      |
+| Term                | Meaning                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Parameter, domain   | A named input dimension and its finite list of values.                                                            |
+| Constraint          | A rule that excludes impossible combinations, such as "guests are always on the free plan".                       |
+| Valid configuration | A value for every parameter that satisfies every constraint.                                                      |
+| Interaction         | Values for `t` distinct parameters, such as `role=guest` and `region=US`.                                         |
+| Strength `t`        | How many parameters an interaction combines: 1 for single values, 2 for pairwise, up to the number of parameters. |
+| Valid interaction   | One that appears in at least one valid configuration, considering all constraints at once.                        |
+| Coverage            | Covered valid interactions divided by all valid interactions, summed over every group.                            |
 
 Every analysis also reports a **coverage profile** from single values (each
 option) up to the model strength, so you can see how coverage drops as
@@ -375,8 +377,12 @@ than in a public issue.
   guarantee finding faults that need three or more parameters.
 - Domains must be finite and chosen by you; there is no automatic
   partitioning or boundary discovery.
-- Strength is two to six; every interaction in a model has the same strength.
-  Higher strengths grow quickly, so large models may exceed the limits.
+- Strength is any whole number from one (every value) to the number of
+  parameters (every valid configuration); every interaction in a model has
+  the same strength. Higher strengths grow quickly, so large models may
+  exceed the limits. The strengths up to the chosen one may span at most
+  131,072 parameter groups, a bound first passed by full strength over 18
+  parameters or strength 7 over 20.
 - Analysis is exact and bounded: models over the
   resource limits are rejected rather than approximated.
 - Generated configurations are test data. You still arrange the state,

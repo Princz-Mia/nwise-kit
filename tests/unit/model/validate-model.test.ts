@@ -112,12 +112,19 @@ describe('validateModel', () => {
   });
 
   test.each([
-    [1, 'UNSUPPORTED_STRENGTH'],
-    [7, 'UNSUPPORTED_STRENGTH'],
+    [0, 'UNSUPPORTED_STRENGTH'],
+    [-2, 'UNSUPPORTED_STRENGTH'],
     [2.5, 'UNSUPPORTED_STRENGTH'],
     ['2', 'UNSUPPORTED_STRENGTH'],
+    [5, 'STRENGTH_EXCEEDS_PARAMETERS'],
   ])('rejects strength %j', (strength, code) => {
     expect(issues(withChanges({ strength }))).toEqual([[code, '/strength']]);
+  });
+
+  test('accepts every strength from 1 to the number of parameters', () => {
+    for (const strength of [1, 2, 3, 4]) {
+      expect(validateModel(withChanges({ strength })).strength).toBe(strength);
+    }
   });
 
   test('rejects a strength above the parameter count', () => {

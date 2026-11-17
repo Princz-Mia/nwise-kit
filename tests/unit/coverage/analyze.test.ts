@@ -122,22 +122,41 @@ describe('analyzeMatrix strength profile', () => {
     ]);
   });
 
-  test('measures up to six-way interactions', () => {
-    const parameters = Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f'].map((n) => [n, [0, 1]]));
-    const model = { schemaVersion: 1, id: 'six', strength: 6, parameters };
-    const row = { id: 'zeros', values: Object.fromEntries(Object.keys(parameters).map((n) => [n, 0])) };
+  test('measures single values at strength one', () => {
+    const analysis = analyzeMatrix({ model: { ...golden, strength: 1 }, cases: goldenRows('000') });
+    expect(profile(analysis)).toEqual([[1, 3, 6]]);
+    expect(analysis.groups.map((g) => g.parameters)).toEqual([['A'], ['B'], ['C']]);
+    expect(pairs(analysis.missing.declared)).toEqual(['A1', 'B1', 'C1']);
+  });
+
+  test('measures every strength up to the number of parameters', () => {
+    const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const parameters = Object.fromEntries(names.map((n) => [n, [0, 1]]));
+    const model = { schemaVersion: 1, id: 'eight', strength: 8, parameters };
+    const row = { id: 'zeros', values: Object.fromEntries(names.map((n) => [n, 0])) };
     const analysis = analyzeMatrix({ model, cases: [row] });
-    // C(6, k) parameter groups with 2^k value combinations each; one row covers one per group.
+    // C(8, k) parameter groups with 2^k value combinations each; one row covers one per group.
     expect(profile(analysis)).toEqual([
-      [1, 6, 12],
-      [2, 15, 60],
-      [3, 20, 160],
-      [4, 15, 240],
-      [5, 6, 192],
-      [6, 1, 64],
+      [1, 8, 16],
+      [2, 28, 112],
+      [3, 56, 448],
+      [4, 70, 1120],
+      [5, 56, 1792],
+      [6, 28, 1792],
+      [7, 8, 1024],
+      [8, 1, 256],
     ]);
     expect(analysis.groups).toHaveLength(1);
-    expect(analysis.missing.declared).toHaveLength(63);
+    expect(analysis.missing.declared).toHaveLength(255);
+  });
+
+  test('is exhaustive at full strength: each valid configuration is one interaction', () => {
+    const analysis = analyzeMatrix({
+      model: { ...golden, strength: 3 },
+      cases: goldenRows('000', '111'),
+    });
+    expect(analysis.universe.interactions).toBe(analysis.universe.validConfigurations);
+    expect(analysis.metrics.declared).toMatchObject({ covered: 2, total: 6 });
   });
 
   test('finds a four-way gap that three-way coverage hides', () => {
@@ -274,6 +293,40 @@ describe('analyzeMatrix limits', () => {
     );
     expect(error.code).toBe('ANALYSIS_INCOMPLETE');
     expect(error.diagnostics[0]?.code).toBe('INTERACTIONS_EXCEEDED');
+  });
+
+  test('refuses a strength that needs too many parameter groups', () => {
+    const single = (count: number) => ({
+      schemaVersion: 1,
+      id: 'deep',
+      strength: count,
+      parameters: Object.fromEntries(Array.from({ length: count }, (_, i) => [`p${String(i)}`, [0]])),
+    });
+    // Full strength over n parameters has 2^n - 1 groups; the bound is 2^17.
+    expect(analyzeMatrix({ model: single(17), cases: [] }).universe.interactions).toBe(1);
+    const error = rejection(() => analyzeMatrix({ model: single(18), cases: [] }));
+    expect(error.code).toBe('ANALYSIS_INCOMPLETE');
+    expect(error.diagnostics[0]?.code).toBe('PARAMETER_GROUPS_EXCEEDED');
+    expect(error.diagnostics[0]?.hint).toBe('Lower the strength or remove parameters.');
+  });
+
+  test('looks at the clock more often when each configuration updates many groups', () => {
+    // 2^11 configurations of 2^11 - 1 groups each: far more work than 2^11 pairwise rows.
+    const parameters = Object.fromEntries(
+      Array.from({ length: 11 }, (_, i) => [`p${String(i).padStart(2, '0')}`, [0, 1]]),
+    );
+    const reads = (strength: number): number => {
+      let count = 0;
+      analyzeInputs(prepareInputs({ schemaVersion: 1, id: 'clock', strength, parameters }, []), {
+        now: () => {
+          count++;
+          return 0;
+        },
+      });
+      return count;
+    };
+    expect(reads(2)).toBeLessThan(40);
+    expect(reads(11)).toBeGreaterThan(1000);
   });
 
   test('stops with an incomplete analysis when the time limit passes', () => {
