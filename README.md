@@ -183,6 +183,18 @@ them. A search that stops early, at `--max-new-cases` or at the work limit,
 still exits 0 and says why; add `--require-target` to make an unmet target
 exit 1.
 
+To build a suite from scratch, leave out `--cases`. With `--matrix-out` the
+result is written as a matrix file you can use straight away: your existing
+cases followed by the new ones, named `suggested-001`, `suggested-002` and
+so on.
+
+```bash
+node dist/cli/index.js suggest --model examples/os-cpu-protocol/model.json --out suggestions.json --matrix-out cases.json --max-new-cases 20
+```
+
+For that model it produces four test cases that cover all 12 pairs, where
+testing every combination would need eight.
+
 After a test run, `--basis observed --run <runtime report>` or `--basis passed`
 starts from what the run actually counted. A useful configuration that is
 already in the matrix is then listed as `rerun-existing`, with its case id

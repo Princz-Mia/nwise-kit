@@ -25,6 +25,8 @@ Nothing has been published to npm yet. The first preview will be
 - Deterministic greedy recommendations to supplement a matrix, with a case
   budget, a work budget and stop reasons; from declared coverage or from
   what a test run observed or passed, including `rerun-existing` advice.
+  Without existing cases the same search builds a suite from scratch, and
+  `--matrix-out` writes the result as a ready-to-use matrix.
 - Versioned static and runtime reports whose counts are recomputed when
   read back, so edited reports are rejected.
 - Command line: `analyze`, `check`, `suggest` and `report`, with documented
