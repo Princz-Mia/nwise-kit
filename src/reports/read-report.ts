@@ -1,14 +1,12 @@
 import type { Diagnostic, ErrorCode } from '../errors.js';
 import { NwiseKitError } from '../errors.js';
 import { canonicalJson } from '../model/canonical.js';
-import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
-import { validateMatrix } from '../model/cases.js';
+import { prepareMatrix, prepareModel } from '../coverage/inputs.js';
 import type { Limits } from '../model/limits.js';
 import { DEFAULT_LIMITS, resolveLimits } from '../model/limits.js';
-import { validateModel } from '../model/validate-model.js';
 import { checkIdentifier, checkObject, Issues } from '../model/shape.js';
 import type { Report } from './report.js';
-import { createRuntimeReport, createStaticReport, REPORT_SCHEMA_VERSION } from './report.js';
+import { REPORT_SCHEMA_VERSION, runtimeReportFor, staticReportFor } from './report.js';
 
 const REPORT_KEYS = [
   'schemaVersion',
@@ -150,22 +148,14 @@ function recompute(input: Record<string, unknown>, maxLimits: Limits): Report {
       })),
     );
   }
-  const model = within('/model', () => validateModel(input['model'], limits));
-  within('/matrix', () => {
-    checkCasesSatisfyConstraints(model, validateMatrix(input['matrix'], model));
-  });
-  const options = {
-    model: input['model'],
-    matrix: input['matrix'],
-    limits,
-    toolVersion: input['toolVersion'] as string,
-  };
+  const { model } = within('/model', () => prepareModel(input['model'], limits));
+  const cases = within('/matrix', () => prepareMatrix(model, input['matrix']));
+  const inputs = { model, cases, limits };
+  const toolVersion = input['toolVersion'] as string;
   if (input['kind'] === 'runtime') {
-    return within('/evidence', () =>
-      createRuntimeReport({ ...options, evidence: input['evidence'] }),
-    );
+    return within('/evidence', () => runtimeReportFor(inputs, input['evidence'], toolVersion));
   }
-  return within('/model', () => createStaticReport(options));
+  return within('/model', () => staticReportFor(inputs, toolVersion));
 }
 
 /** Runs `step`, reporting embedded input errors as an invalid report at `prefix`. */

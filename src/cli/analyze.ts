@@ -1,11 +1,9 @@
-import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
-import { validateMatrix } from '../model/cases.js';
-import { validateModel } from '../model/validate-model.js';
-import { createStaticReport, formatReport } from '../reports/report.js';
+import { formatReport, staticReportFor } from '../reports/report.js';
 import { neutralize, renderDiagnostic, renderSummary } from '../reports/terminal.js';
 import { parseOptions, requireOption } from './args.js';
 import { EXIT } from './exit.js';
-import { checkOutputPath, inFile, readJsonFile, writeOutputFile } from './files.js';
+import { checkOutputPath, inFile, writeOutputFile } from './files.js';
+import { loadInputs } from './inputs.js';
 import type { CliIo } from './io.js';
 
 export const ANALYZE_HELP = `Usage: nwise-kit analyze --model <file> --cases <file> [--json <file>] [--force]
@@ -40,13 +38,9 @@ export function analyzeCommand(argv: readonly string[], io: CliIo): number {
     checkOutputPath(options.json, [modelPath, casesPath], force);
   }
 
-  const model = readJsonFile(modelPath);
-  const matrix = readJsonFile(casesPath);
-  const validModel = inFile(modelPath, () => validateModel(model));
-  inFile(casesPath, () => {
-    checkCasesSatisfyConstraints(validModel, validateMatrix(matrix, validModel));
-  });
-  const report = createStaticReport({ model, matrix, toolVersion: io.toolVersion });
+  const inputs = loadInputs(modelPath, casesPath);
+  // What can still fail here (an unsatisfiable or oversized model) is the model's doing.
+  const report = inFile(modelPath, () => staticReportFor(inputs, io.toolVersion));
 
   io.stdout(renderSummary(report));
   for (const diagnostic of report.diagnostics) {

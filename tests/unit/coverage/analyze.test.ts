@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { analyzeMatrix, analyzeMatrixWith } from '../../../src/coverage/analyze.js';
+import { analyzeInputs, analyzeMatrix } from '../../../src/coverage/analyze.js';
+import { prepareInputs } from '../../../src/coverage/inputs.js';
 import { NwiseKitError } from '../../../src/errors.js';
 import { golden, goldenRows } from '../../fixtures/models.js';
 
@@ -236,10 +237,9 @@ describe('analyzeMatrix limits', () => {
   test('rejects a raw product over the limit before enumerating', () => {
     let clockReads = 0;
     const error = rejection(() =>
-      analyzeMatrixWith(
-        { model: wide, cases: [], limits: { maxRawConfigurations: 1_000_000 } },
-        { now: () => clockReads++ },
-      ),
+      analyzeInputs(prepareInputs(wide, [], { maxRawConfigurations: 1_000_000 }), {
+        now: () => clockReads++,
+      }),
     );
     expect(error.code).toBe('LIMIT_EXCEEDED');
     expect(error.message).toContain('1048576 raw configurations');
@@ -279,8 +279,10 @@ describe('analyzeMatrix limits', () => {
   test('stops with an incomplete analysis when the time limit passes', () => {
     let t = 0;
     const error = rejection(() =>
-      analyzeMatrixWith(
-        { model: { ...wide, parameters: { ...wide.parameters, p9: [0] } }, cases: [], limits: { analysisTimeMs: 50 } },
+      analyzeInputs(
+        prepareInputs({ ...wide, parameters: { ...wide.parameters, p9: [0] } }, [], {
+          analysisTimeMs: 50,
+        }),
         { now: () => (t += 100) },
       ),
     );

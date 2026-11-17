@@ -1,17 +1,15 @@
-import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
 import type { GroupCoverage, StrengthCoverage } from '../coverage/analyze.js';
 import { redundantConfigurations } from '../coverage/analyze.js';
 import type { Interaction, Metric } from '../coverage/coverage.js';
+import type { Inputs } from '../coverage/inputs.js';
+import { prepareInputs } from '../coverage/inputs.js';
 import { measure } from '../coverage/measure.js';
 import { buildUniverse } from '../coverage/universe.js';
 import type { Diagnostic } from '../errors.js';
 import { matrixHash, modelHash } from '../model/canonical.js';
-import { validateCases } from '../model/cases.js';
 import type { Limits } from '../model/limits.js';
-import { resolveLimits } from '../model/limits.js';
 import type { Strength } from '../model/types.js';
 import { compareCodeUnits } from '../model/types.js';
-import { validateModel } from '../model/validate-model.js';
 import { contribution } from './lifecycle.js';
 import type { RunEvidence, RunFilters } from './types.js';
 import { validateEvidence } from './validate.js';
@@ -72,13 +70,20 @@ export interface RuntimeAnalysis {
  * denominator.
  */
 export function analyzeRun(options: AnalyzeRunOptions): RuntimeAnalysis {
+  return analyzeRunInputs(
+    prepareInputs(options.model, options.cases, options.limits),
+    options.evidence,
+  );
+}
+
+/** Computes runtime coverage for inputs that are already validated. */
+export function analyzeRunInputs(
+  { model, cases, limits }: Inputs,
+  evidenceInput: unknown,
+): RuntimeAnalysis {
   const started = performance.now();
-  const limits = resolveLimits(options.limits);
-  const model = validateModel(options.model, limits);
-  const cases = validateCases(options.cases, model);
-  checkCasesSatisfyConstraints(model, cases);
   const hashes = { modelHash: modelHash(model), matrixHash: matrixHash(model, cases) };
-  const evidence = validateEvidence(options.evidence, { ...hashes, cases });
+  const evidence = validateEvidence(evidenceInput, { ...hashes, cases });
   const universe = buildUniverse(model, limits);
 
   const byId = new Map(cases.map((c) => [c.id, c]));
