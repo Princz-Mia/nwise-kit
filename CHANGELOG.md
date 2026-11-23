@@ -19,9 +19,9 @@ it is released.
   problem. Duplicate JSON keys are rejected.
 - Matrices of existing test cases, rejected rather than trimmed when a row
   is incomplete, has unknown parameters or breaks a constraint.
-- Exact n-wise coverage, from pairwise (2) up to six-way, over globally
-  valid interactions,
-  with per-group counts, every missing interaction, and a coverage profile
+- Exact n-wise coverage at any strength from single values (1) through
+  pairwise (2) to the number of parameters (exhaustive), over globally
+  valid interactions, with per-group counts, every missing interaction, and a coverage profile
   from single values up to the model strength.
 - Deterministic greedy recommendations to supplement a matrix, with a case
   budget, a work budget and stop reasons; from declared coverage or from

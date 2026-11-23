@@ -48,6 +48,19 @@ describe('suggestCases on the reference model', () => {
     });
   });
 
+  test('builds an each-choice suite at strength one', () => {
+    const result = suggestCases({ model: { ...golden, strength: 1 }, cases: [] });
+    expect(configs(result)).toEqual(['000', '111']);
+    expect(result.projected).toMatchObject({ covered: 6, total: 6 });
+  });
+
+  test('builds the exhaustive suite at full strength', () => {
+    const result = suggestCases({ model: { ...golden, strength: 3 }, cases: [] });
+    expect(configs(result)).toEqual(['000', '001', '010', '011', '110', '111']);
+    expect(result.recommendations.every((r) => r.gain === 1)).toBe(true);
+    expect(result.targetReached).toBe(true);
+  });
+
   test('returns nothing when the matrix already meets the target', () => {
     const result = suggestCases({
       model: golden,

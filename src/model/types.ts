@@ -2,14 +2,14 @@
 export type DomainValue = string | number | boolean;
 
 /**
- * How many parameters an interaction combines: 2 is pairwise, 3 is
- * three-way, and so on up to 6, the highest interaction strength at
- * which empirical studies have found faults.
+ * How many parameters an interaction combines, as a whole number from 1
+ * to the number of parameters: 1 is every single value (each choice), 2
+ * is pairwise, 3 is three-way, and at the number of parameters an
+ * interaction is a whole configuration, so coverage is exhaustive.
  */
-export type Strength = 2 | 3 | 4 | 5 | 6;
+export type Strength = number;
 
-export const MIN_STRENGTH = 2;
-export const MAX_STRENGTH = 6;
+export const MIN_STRENGTH = 1;
 
 /** A constraint expression. Each expression object has exactly one operator. */
 export type Expression =
