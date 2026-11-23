@@ -140,7 +140,7 @@ invalid rows are rejected, never dropped.
 ## Command line
 
 Until the package is published, build it from a checkout and run the
-binary with Node.js 24:
+binary with Node.js 22.13 or later:
 
 ```bash
 npm ci
@@ -318,7 +318,7 @@ scenarios and the measured numbers are in [benchmarks/](benchmarks/);
 
 ## Development
 
-Requires Node.js 24.
+Requires Node.js 22.13 or later; CI tests the 22, 24 and 26 release lines.
 
 ```bash
 npm ci
