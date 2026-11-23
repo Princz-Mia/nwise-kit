@@ -1,26 +1,22 @@
 import { parseThreshold } from '../coverage/threshold.js';
-import { caseValues } from '../model/cases.js';
 import { neutralize, renderDiagnostic, renderSuggestions } from '../reports/terminal.js';
-import {
-  createSuggestionsFile,
-  formatSuggestions,
-  matrixWithSuggestions,
-} from '../suggestions/file.js';
+import { createSuggestionsFile, formatSuggestions } from '../suggestions/file.js';
 import type { Basis } from '../suggestions/greedy.js';
 import { suggestForInputs } from '../suggestions/greedy.js';
 import { readReport } from '../reports/read-report.js';
-import { invalidArguments, parseOptions, requireOption } from './args.js';
+import { invalidArguments, parseOptions, parsePositiveInteger, requireOption } from './args.js';
 import { EXIT } from './exit.js';
 import { checkOutputPath, inFile, readJsonFile, samePath, writeOutputFile } from './files.js';
 import { loadInputs } from './inputs.js';
 import type { CliIo } from './io.js';
+import { writeCombinedMatrix } from './matrix.js';
 
 export const SUGGEST_HELP = `Usage: nwise-kit suggest --model <file> --out <file> [--cases <file>] [options]
 
 Recommends configurations to add to the matrix so it covers more valid
 interactions. Without --cases it builds a suite from scratch. Existing
 files and tests are never changed; add the recommended cases, with their
-assertions, yourself.
+assertions, yourself. To get only the matrix, use "nwise-kit generate".
 
 Options:
   --model <file>          Model JSON file
@@ -37,8 +33,6 @@ Options:
   --force                 Replace an existing --out file (never an input file)
   --help                  Show this help
 `;
-
-const CASE_BUDGET = /^[1-9]\d*$/;
 
 export function suggestCommand(argv: readonly string[], io: CliIo): number {
   const options = parseOptions(argv, {
@@ -63,14 +57,7 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
   const out = requireOption(options.out, 'out', 'suggest');
   const target = options.target ?? '100';
   parseThreshold(target);
-  const budgetText = options['max-new-cases'] ?? '10';
-  const maxNewCases = Number(budgetText);
-  if (!CASE_BUDGET.test(budgetText) || !Number.isSafeInteger(maxNewCases)) {
-    throw invalidArguments(
-      `Invalid --max-new-cases "${neutralize(budgetText)}"`,
-      'Use a positive whole number.',
-    );
-  }
+  const maxNewCases = parsePositiveInteger(options['max-new-cases'] ?? '10', 'max-new-cases');
   const basis = checkBasis(options.basis ?? 'declared', options.run);
   if (casesPath === undefined && options.run !== undefined) {
     throw invalidArguments('--run needs --cases: a test run belongs to an existing matrix');
@@ -103,13 +90,7 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
   writeOutputFile(out, formatSuggestions(createSuggestionsFile(result, io.toolVersion)), force);
   io.stdout(`\nSuggestions written to ${neutralize(out)}\n`);
   if (matrixOut !== undefined) {
-    const existing = inputs.cases.map((c) => ({
-      id: c.id,
-      values: caseValues(inputs.model, c.indices),
-    }));
-    const combined = matrixWithSuggestions(inputs.model.id, existing, result.recommendations);
-    writeOutputFile(matrixOut, `${JSON.stringify(combined, null, 2)}\n`, force);
-    const added = combined.cases.length - existing.length;
+    const added = writeCombinedMatrix(matrixOut, inputs, result.recommendations, force);
     io.stdout(
       `Matrix with ${String(added)} added case${added === 1 ? '' : 's'} written to ${neutralize(matrixOut)}\n`,
     );

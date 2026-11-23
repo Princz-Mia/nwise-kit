@@ -27,7 +27,7 @@ describe('README', () => {
   });
 
   test('lists every command the CLI has', () => {
-    for (const command of ['analyze', 'check', 'suggest', 'report']) {
+    for (const command of ['analyze', 'check', 'suggest', 'generate', 'report']) {
       expect(readme).toContain(`node dist/cli/index.js ${command} `);
     }
   });
