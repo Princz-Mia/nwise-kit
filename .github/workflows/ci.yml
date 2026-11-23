@@ -38,8 +38,9 @@ jobs:
         run: npm run lint
       - name: Type check
         run: npm run typecheck
-      - name: Unit tests
-        run: npm run test:unit
+      # Fails below 95% line and 85% branch coverage of the core.
+      - name: Unit tests with coverage
+        run: npm run test:coverage
       - name: Integration tests (built CLI)
         run: npm run test:integration
       - name: Build
