@@ -41,7 +41,7 @@ describe('model schema', () => {
     ['an unknown key', { ...golden, strenght: 2 }],
     ['a missing id', { ...golden, id: undefined }],
     ['schema version 2', { ...golden, schemaVersion: 2 }],
-    ['strength 4', { ...golden, strength: 4 }],
+    ['strength 7', { ...golden, strength: 7 }],
     ['an empty domain', { ...golden, parameters: { ...golden.parameters, A: [] } }],
     ['a repeated value', { ...golden, parameters: { ...golden.parameters, A: [0, 0] } }],
     ['mixed value types', { ...golden, parameters: { ...golden.parameters, A: [0, '1'] } }],

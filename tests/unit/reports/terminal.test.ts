@@ -60,6 +60,19 @@ describe('renderSummary', () => {
     expect(renderSummary(full)).toContain('No valid pairs are missing.');
   });
 
+  test('names interactions above three-way by their strength', () => {
+    const parameters = Object.fromEntries(['a', 'b', 'c', 'd'].map((n) => [n, [0, 1]]));
+    const fourWay = createStaticReport({
+      model: { schemaVersion: 1, id: 'four', strength: 4, parameters },
+      matrix: { schemaVersion: 1, modelId: 'four', cases: [] },
+      toolVersion: '1.2.3',
+    });
+    const output = renderSummary(fourWay);
+    expect(output).toContain('16 valid 4-way interactions');
+    expect(output).toContain('Missing 4-way interactions (16):');
+    expect(output).toContain('4-way 0/16 (0.00%)');
+  });
+
   test('prints hostile values as data', () => {
     const model = {
       schemaVersion: 1,
