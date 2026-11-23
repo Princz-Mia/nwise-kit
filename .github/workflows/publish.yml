@@ -1,0 +1,109 @@
+name: Publish
+
+# Publishes a tagged release to npm through trusted publishing (OIDC); no
+# npm token is stored. The package must already exist on npm with this
+# workflow configured as its trusted publisher, so the very first release
+# is made by a maintainer from their own machine.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+# Never run two releases at once, and never cancel one half-way.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish ${{ github.ref_name }}
+    if: github.repository == 'Princz-Mia/nwise-kit'
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      actions: read # read the CI result of the tagged commit
+      id-token: write # prove this workflow's identity to npm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Require the tag to be on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.x'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - name: Require CI to have passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --json conclusion --jq '.[0].conclusion')
+          echo "CI conclusion for $GITHUB_SHA: ${conclusion:-none}"
+          test "$conclusion" = "success"
+      - name: Install dependencies
+        run: npm ci
+      - name: Check the version, tag, changelog and metadata
+        id: release
+        run: npm run release:verify -- --tag "$GITHUB_REF_NAME"
+      - name: Stop if this version is already on npm
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          # A missing version is the expected case. Any other failure (network,
+          # registry outage) must stop the release rather than count as "absent".
+          set +e
+          published=$(npm view "nwise-kit@$VERSION" version 2>view-error.txt)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] && [ -n "$published" ]; then
+            echo "nwise-kit@$VERSION is already published; inspect it instead of republishing." >&2
+            exit 1
+          fi
+          if [ "$status" -ne 0 ] && ! grep -q 'E404' view-error.txt; then
+            cat view-error.txt >&2
+            exit 1
+          fi
+          rm -f view-error.txt
+      - name: Run every check
+        run: npm run verify
+      - name: Pack the release once
+        id: pack
+        run: |
+          tarball=$(npm pack --json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8"))[0].filename')
+          sha256sum "$tarball"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$tarball" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Test exactly that archive in clean projects
+        run: npm run package:check -- --tarball "${{ steps.pack.outputs.tarball }}"
+      - name: Publish the tested archive
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --tag "${{ steps.release.outputs.channel }}"
+      - name: Confirm the registry has it
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          # The registry can take a moment to show a new version; retry reads, never the publish.
+          for attempt in 1 2 3 4 5 6; do
+            if npm view "nwise-kit@$VERSION" version dist.integrity; then
+              npm dist-tag ls nwise-kit
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "nwise-kit@$VERSION did not appear on the registry." >&2
+          exit 1
+      - name: Record the release
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          {
+            echo "### nwise-kit $VERSION"
+            echo "- Channel: ${{ steps.release.outputs.channel }}"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Archive: ${{ steps.pack.outputs.tarball }}"
+            echo "- SHA-256: ${{ steps.pack.outputs.sha256 }}"
+            echo "- Node.js $(node --version), npm $(npm --version)"
+          } >> "$GITHUB_STEP_SUMMARY"

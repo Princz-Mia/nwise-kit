@@ -1,7 +1,6 @@
 {
   "name": "nwise-kit",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-alpha.1",
   "description": "Constraint-aware combinatorial coverage for existing test suites.",
   "type": "module",
   "license": "MIT",
@@ -57,6 +56,11 @@
     "coverage",
     "vitest"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
+  },
   "scripts": {
     "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
@@ -68,6 +72,7 @@
     "build": "node scripts/build.mjs",
     "package:check": "node scripts/package-check.mjs",
     "bench": "node scripts/build.mjs && node scripts/bench.mjs",
+    "release:verify": "node scripts/release-verify.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run test:integration && npm run build"
   },
   "devDependencies": {
