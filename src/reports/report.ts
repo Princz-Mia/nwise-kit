@@ -1,17 +1,17 @@
 import type { GroupCoverage, StaticAnalysis, StrengthCoverage } from '../coverage/analyze.js';
-import { analyzeMatrix } from '../coverage/analyze.js';
+import { analyzeInputs } from '../coverage/analyze.js';
+import type { Inputs } from '../coverage/inputs.js';
+import { prepareMatrixInputs } from '../coverage/inputs.js';
 import type { Metric } from '../coverage/coverage.js';
 import type { Diagnostic } from '../errors.js';
 import type { RuntimeAnalysis } from '../evidence/analyze-run.js';
-import { analyzeRun } from '../evidence/analyze-run.js';
+import { analyzeRunInputs } from '../evidence/analyze-run.js';
 import type { RunEvidence, RunFilters } from '../evidence/types.js';
 import { modelToJson } from '../model/canonical.js';
 import type { CaseInput, MatrixInput } from '../model/cases.js';
-import { caseValues, validateMatrix } from '../model/cases.js';
+import { caseValues } from '../model/cases.js';
 import type { Limits } from '../model/limits.js';
-import { resolveLimits } from '../model/limits.js';
 import type { DomainValue, ModelInput, Strength } from '../model/types.js';
-import { validateModel } from '../model/validate-model.js';
 
 export const REPORT_SCHEMA_VERSION = 1;
 
@@ -66,19 +66,21 @@ export interface CreateStaticReportOptions {
 
 /** Analyses a matrix file and packages the result as a static report. */
 export function createStaticReport(options: CreateStaticReportOptions): StaticReport {
+  return staticReportFor(
+    prepareMatrixInputs(options.model, options.matrix, options.limits),
+    options.toolVersion,
+  );
+}
+
+/** Packages the analysis of already validated inputs as a static report. */
+export function staticReportFor(inputs: Inputs, toolVersion: string): StaticReport {
   const started = performance.now();
-  const limits = resolveLimits(options.limits);
-  const model = validateModel(options.model, limits);
-  const cases = validateMatrix(options.matrix, model);
-  const analysis = analyzeMatrix({
-    model: options.model,
-    cases: (options.matrix as { cases: unknown }).cases,
-    limits,
-  });
+  const { model, cases } = inputs;
+  const analysis = analyzeInputs(inputs);
   const rows: CaseInput[] = cases.map((c) => ({ id: c.id, values: caseValues(model, c.indices) }));
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
-    toolVersion: options.toolVersion,
+    toolVersion,
     kind: 'static',
     model: modelToJson(model),
     matrix: { schemaVersion: 1, modelId: model.id, cases: rows },
@@ -155,20 +157,26 @@ function interactions(list: readonly ReportInteraction[]): ReportInteraction[] {
 
 /** Analyses a run's evidence for a matrix file and packages the result as a runtime report. */
 export function createRuntimeReport(options: CreateRuntimeReportOptions): RuntimeReport {
+  return runtimeReportFor(
+    prepareMatrixInputs(options.model, options.matrix, options.limits),
+    options.evidence,
+    options.toolVersion,
+  );
+}
+
+/** Packages the run analysis of already validated inputs as a runtime report. */
+export function runtimeReportFor(
+  inputs: Inputs,
+  evidence: unknown,
+  toolVersion: string,
+): RuntimeReport {
   const started = performance.now();
-  const limits = resolveLimits(options.limits);
-  const model = validateModel(options.model, limits);
-  const cases = validateMatrix(options.matrix, model);
-  const analysis = analyzeRun({
-    model: options.model,
-    cases: (options.matrix as { cases: unknown }).cases,
-    evidence: options.evidence,
-    limits,
-  });
+  const { model, cases } = inputs;
+  const analysis = analyzeRunInputs(inputs, evidence);
   const rows: CaseInput[] = cases.map((c) => ({ id: c.id, values: caseValues(model, c.indices) }));
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
-    toolVersion: options.toolVersion,
+    toolVersion,
     kind: 'runtime',
     model: modelToJson(model),
     matrix: { schemaVersion: 1, modelId: model.id, cases: rows },

@@ -1,14 +1,12 @@
-import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
 import type { Diagnostic } from '../errors.js';
 import { matrixHash, modelHash } from '../model/canonical.js';
 import type { TestCase } from '../model/cases.js';
-import { validateCases } from '../model/cases.js';
 import type { Limits } from '../model/limits.js';
-import { resolveLimits } from '../model/limits.js';
 import type { Strength } from '../model/types.js';
 import { compareCodeUnits } from '../model/types.js';
-import { validateModel } from '../model/validate-model.js';
 import type { Interaction, Metric } from './coverage.js';
+import type { Inputs } from './inputs.js';
+import { prepareInputs } from './inputs.js';
 import { measure } from './measure.js';
 import type { UniverseOptions } from './universe.js';
 import { buildUniverse } from './universe.js';
@@ -71,19 +69,15 @@ export interface StaticAnalysis {
  * unsatisfiable model or an analysis that cannot finish within limits.
  */
 export function analyzeMatrix(options: AnalyzeMatrixOptions): StaticAnalysis {
-  return analyzeMatrixWith(options);
+  return analyzeInputs(prepareInputs(options.model, options.cases, options.limits));
 }
 
-/** As `analyzeMatrix`, with a replaceable clock for tests. */
-export function analyzeMatrixWith(
-  options: AnalyzeMatrixOptions,
+/** Analyses inputs that are already validated. The clock is replaceable for tests. */
+export function analyzeInputs(
+  { model, cases, limits }: Inputs,
   universeOptions: UniverseOptions = {},
 ): StaticAnalysis {
   const started = performance.now();
-  const limits = resolveLimits(options.limits);
-  const model = validateModel(options.model, limits);
-  const cases = validateCases(options.cases, model);
-  checkCasesSatisfyConstraints(model, cases);
   const universe = buildUniverse(model, limits, universeOptions);
 
   const declared = measure(

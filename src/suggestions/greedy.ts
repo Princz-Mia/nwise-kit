@@ -1,6 +1,7 @@
-import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
 import type { Interaction, Metric } from '../coverage/coverage.js';
 import { CoverageSet } from '../coverage/coverage.js';
+import type { Inputs } from '../coverage/inputs.js';
+import { prepareInputs } from '../coverage/inputs.js';
 import { meetsThreshold, parseThreshold } from '../coverage/threshold.js';
 import type { Universe } from '../coverage/universe.js';
 import { buildUniverse, cellOf } from '../coverage/universe.js';
@@ -10,12 +11,10 @@ import { contribution } from '../evidence/lifecycle.js';
 import { validateEvidence } from '../evidence/validate.js';
 import { matrixHash, modelHash } from '../model/canonical.js';
 import type { TestCase } from '../model/cases.js';
-import { caseValues, validateCases } from '../model/cases.js';
+import { caseValues } from '../model/cases.js';
 import type { Limits } from '../model/limits.js';
-import { resolveLimits } from '../model/limits.js';
 import type { DomainValue, Strength } from '../model/types.js';
 import { compareCodeUnits } from '../model/types.js';
-import { validateModel } from '../model/validate-model.js';
 
 /**
  * Identifies the selection rule and how work is counted. Changing either
@@ -107,6 +106,20 @@ export interface SuggestCasesOptions {
  * Nothing is written and no test is run.
  */
 export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
+  return suggestForInputs(prepareInputs(options.model, options.cases, options.limits), options);
+}
+
+/** The options of a search apart from the model, the cases and the limits. */
+export type SearchOptions = Pick<
+  SuggestCasesOptions,
+  'basis' | 'evidence' | 'targetCoverage' | 'maxNewCases'
+>;
+
+/** Recommends configurations for inputs that are already validated. */
+export function suggestForInputs(
+  { model, cases, limits }: Inputs,
+  options: SearchOptions,
+): SuggestionResult {
   const started = performance.now();
   const basis = options.basis ?? 'declared';
   if (basis !== 'declared' && options.evidence === undefined) {
@@ -132,10 +145,6 @@ export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
     ]);
   }
 
-  const limits = resolveLimits(options.limits);
-  const model = validateModel(options.model, limits);
-  const cases = validateCases(options.cases, model);
-  checkCasesSatisfyConstraints(model, cases);
   const hashes = { modelHash: modelHash(model), matrixHash: matrixHash(model, cases) };
   const run =
     basis === 'declared' ? undefined : runtimeBasis(basis, options.evidence, hashes, cases);
@@ -195,14 +204,14 @@ export function suggestCases(options: SuggestCasesOptions): SuggestionResult {
   };
 }
 
-interface Pick {
+interface Selection {
   readonly indices: readonly number[];
   readonly gain: number;
   readonly projected: Metric;
 }
 
 interface Search {
-  readonly picks: readonly Pick[];
+  readonly picks: readonly Selection[];
   readonly stopReason: StopReason;
   readonly work: number;
 }
@@ -226,7 +235,7 @@ export function supplement(
   const groups = universe.groups;
   const chosen = new Uint8Array(count);
   const candidate = (i: number): Int32Array => universe.configurations.subarray(i * n, i * n + n);
-  const picks: Pick[] = [];
+  const picks: Selection[] = [];
   let work = 0;
 
   for (;;) {
