@@ -53,6 +53,8 @@ export type {
 export {
   createSuggestionsFile,
   formatSuggestions,
+  matrixWithSuggestions,
+  readSuggestionsFile,
   SUGGESTIONS_SCHEMA_VERSION,
 } from './suggestions/file.js';
 export type { SuggestionsFile } from './suggestions/file.js';

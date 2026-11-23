@@ -1,27 +1,34 @@
 import { checkCasesSatisfyConstraints } from '../constraints/compile.js';
 import { parseThreshold } from '../coverage/threshold.js';
-import { validateMatrix } from '../model/cases.js';
+import { caseValues, validateMatrix } from '../model/cases.js';
 import { validateModel } from '../model/validate-model.js';
 import { neutralize, renderDiagnostic, renderSuggestions } from '../reports/terminal.js';
-import { createSuggestionsFile, formatSuggestions } from '../suggestions/file.js';
+import {
+  createSuggestionsFile,
+  formatSuggestions,
+  matrixWithSuggestions,
+} from '../suggestions/file.js';
 import type { Basis } from '../suggestions/greedy.js';
 import { suggestCases } from '../suggestions/greedy.js';
 import { readReport } from '../reports/read-report.js';
 import { invalidArguments, parseOptions, requireOption } from './args.js';
 import { EXIT } from './exit.js';
-import { checkOutputPath, inFile, readJsonFile, writeOutputFile } from './files.js';
+import { checkOutputPath, inFile, readJsonFile, samePath, writeOutputFile } from './files.js';
 import type { CliIo } from './io.js';
 
-export const SUGGEST_HELP = `Usage: nwise-kit suggest --model <file> --cases <file> --out <file> [options]
+export const SUGGEST_HELP = `Usage: nwise-kit suggest --model <file> --out <file> [--cases <file>] [options]
 
 Recommends configurations to add to the matrix so it covers more valid
-interactions. Existing files and tests are never changed; add the
-recommended cases, with their assertions, yourself.
+interactions. Without --cases it builds a suite from scratch. Existing
+files and tests are never changed; add the recommended cases, with their
+assertions, yourself.
 
 Options:
   --model <file>          Model JSON file
   --cases <file>          Matrix JSON file with the existing test cases
   --out <file>            Where to write the suggestions JSON
+  --matrix-out <file>     Also write a matrix: the existing cases plus the
+                          recommended new ones, with ids suggested-001, ...
   --target <percent>      Coverage to reach, 0 to 100 (default: 100)
   --max-new-cases <n>     Most recommendations to return (default: 10)
   --basis <name>          Coverage to start from: declared (default), observed
@@ -39,6 +46,7 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
     model: 'string',
     cases: 'string',
     out: 'string',
+    'matrix-out': 'string',
     target: 'string',
     'max-new-cases': 'string',
     basis: 'string',
@@ -52,7 +60,7 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
     return EXIT.ok;
   }
   const modelPath = requireOption(options.model, 'model', 'suggest');
-  const casesPath = requireOption(options.cases, 'cases', 'suggest');
+  const casesPath = options.cases;
   const out = requireOption(options.out, 'out', 'suggest');
   const target = options.target ?? '100';
   parseThreshold(target);
@@ -65,18 +73,31 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
     );
   }
   const basis = checkBasis(options.basis ?? 'declared', options.run);
+  if (casesPath === undefined && options.run !== undefined) {
+    throw invalidArguments('--run needs --cases: a test run belongs to an existing matrix');
+  }
   const force = options.force === true;
-  checkOutputPath(
-    out,
-    [modelPath, casesPath, ...(options.run === undefined ? [] : [options.run])],
-    force,
-  );
+  const inputs = [modelPath, casesPath, options.run].filter((path) => path !== undefined);
+  checkOutputPath(out, inputs, force);
+  const matrixOut = options['matrix-out'];
+  if (matrixOut !== undefined) {
+    if (samePath(matrixOut, out)) {
+      throw invalidArguments('--matrix-out and --out must be different files');
+    }
+    checkOutputPath(matrixOut, inputs, force);
+  }
 
   const model = readJsonFile(modelPath);
-  const matrix = readJsonFile(casesPath);
   const validModel = inFile(modelPath, () => validateModel(model));
-  inFile(casesPath, () => {
-    checkCasesSatisfyConstraints(validModel, validateMatrix(matrix, validModel));
+  // Without --cases the search starts from an empty matrix and builds a suite from scratch.
+  const matrix: unknown =
+    casesPath === undefined
+      ? { schemaVersion: 1, modelId: validModel.id, cases: [] }
+      : readJsonFile(casesPath);
+  const existing = inFile(casesPath ?? modelPath, () => {
+    const cases = validateMatrix(matrix, validModel);
+    checkCasesSatisfyConstraints(validModel, cases);
+    return cases.map((c) => ({ id: c.id, values: caseValues(validModel, c.indices) }));
   });
   const evidence = options.run === undefined ? undefined : runEvidence(options.run);
   const result = suggestCases({
@@ -94,6 +115,14 @@ export function suggestCommand(argv: readonly string[], io: CliIo): number {
   }
   writeOutputFile(out, formatSuggestions(createSuggestionsFile(result, io.toolVersion)), force);
   io.stdout(`\nSuggestions written to ${neutralize(out)}\n`);
+  if (matrixOut !== undefined) {
+    const combined = matrixWithSuggestions(validModel.id, existing, result.recommendations);
+    writeOutputFile(matrixOut, `${JSON.stringify(combined, null, 2)}\n`, force);
+    const added = combined.cases.length - existing.length;
+    io.stdout(
+      `Matrix with ${String(added)} added case${added === 1 ? '' : 's'} written to ${neutralize(matrixOut)}\n`,
+    );
+  }
   return options['require-target'] === true && !result.targetReached ? EXIT.unmet : EXIT.ok;
 }
 

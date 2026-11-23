@@ -138,6 +138,83 @@ describe('nwise-kit suggest', () => {
     expect(suggest('--basis', 'passed', '--run', incomplete).code).toBe(3);
   });
 
+  test('builds a pairwise suite from scratch and writes it as a matrix', () => {
+    const scratch = exampleDir('os-cpu-protocol', ['model.json']);
+    const generated = join(scratch, 'generated.json');
+    const result = runCli(
+      'suggest',
+      '--model',
+      join(scratch, 'model.json'),
+      '--out',
+      join(scratch, 'suggestions.json'),
+      '--matrix-out',
+      generated,
+      '--max-new-cases',
+      '20',
+    );
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Baseline: 0/12 (0.00%)');
+    expect(result.stdout).toContain(`Matrix with 4 added cases written to ${generated}`);
+    const matrix = JSON.parse(readFileSync(generated, 'utf8')) as { cases: { id: string }[] };
+    expect(matrix.cases.map((c) => c.id)).toEqual([
+      'suggested-001',
+      'suggested-002',
+      'suggested-003',
+      'suggested-004',
+    ]);
+    // The generated matrix is a valid input and covers every pair with four tests.
+    const analysed = runCli(
+      'analyze',
+      '--model',
+      join(scratch, 'model.json'),
+      '--cases',
+      generated,
+    );
+    expect(analysed.stdout).toContain('declared  12/12 (100.00%)');
+  });
+
+  test('appends new cases to the existing ones without reusing an id', () => {
+    writeFileSync(
+      cases,
+      JSON.stringify({
+        schemaVersion: 1,
+        modelId: 'golden',
+        cases: [
+          { id: 'suggested-001', values: { A: 0, B: 0, C: 0 } },
+          { id: 'all-one', values: { A: 1, B: 1, C: 1 } },
+        ],
+      }),
+    );
+    const combined = join(dir, 'combined.json');
+    expect(suggest('--matrix-out', combined).code).toBe(0);
+    const matrix = JSON.parse(readFileSync(combined, 'utf8')) as { cases: { id: string }[] };
+    expect(matrix.cases.map((c) => c.id)).toEqual([
+      'suggested-001',
+      'all-one',
+      'suggested-002',
+      'suggested-003',
+      'suggested-004',
+    ]);
+  });
+
+  test('keeps the two outputs apart and requires --cases with --run', () => {
+    expect(suggest('--matrix-out', out).stderr).toContain('must be different files');
+    expect(suggest('--matrix-out', cases, '--force').stderr).toContain('OUTPUT_IS_INPUT');
+    const noCases = runCli(
+      'suggest',
+      '--model',
+      model,
+      '--out',
+      out,
+      '--basis',
+      'observed',
+      '--run',
+      'r.json',
+    );
+    expect(noCases.code).toBe(2);
+    expect(noCases.stderr).toContain('--run needs --cases');
+  });
+
   test('requires --out', () => {
     const result = runCli('suggest', '--model', model, '--cases', cases);
     expect(result.code).toBe(2);

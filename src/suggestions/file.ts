@@ -1,7 +1,8 @@
 import { parseThreshold } from '../coverage/threshold.js';
 import { NwiseKitError } from '../errors.js';
 import { checkObject, Issues, isRecord } from '../model/shape.js';
-import type { SuggestionResult } from './greedy.js';
+import type { CaseInput, MatrixInput } from '../model/cases.js';
+import type { Recommendation, SuggestionResult } from './greedy.js';
 
 export const SUGGESTIONS_SCHEMA_VERSION = 1;
 
@@ -167,4 +168,33 @@ export function readSuggestionsFile(input: unknown, matrixHash: string): Suggest
     throw new NwiseKitError('INVALID_REPORT', 'Invalid suggestions file', issues.diagnostics);
   }
   return input as SuggestionsFile;
+}
+
+/**
+ * The existing cases followed by every `add-case` recommendation, as a
+ * matrix ready to save. New rows get ids `suggested-001`, `suggested-002`
+ * and so on, skipping ids already in use. `rerun-existing`
+ * recommendations are already in the matrix and add nothing.
+ */
+export function matrixWithSuggestions(
+  modelId: string,
+  cases: readonly CaseInput[],
+  recommendations: readonly Recommendation[],
+): MatrixInput {
+  const taken = new Set(cases.map((c) => c.id));
+  const added: CaseInput[] = [];
+  let counter = 0;
+  for (const recommendation of recommendations) {
+    if (recommendation.kind !== 'add-case') {
+      continue;
+    }
+    let id: string;
+    do {
+      counter++;
+      id = `suggested-${String(counter).padStart(3, '0')}`;
+    } while (taken.has(id));
+    taken.add(id);
+    added.push({ id, values: recommendation.values });
+  }
+  return { schemaVersion: 1, modelId, cases: [...cases, ...added] };
 }
