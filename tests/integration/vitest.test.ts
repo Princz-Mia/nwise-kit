@@ -82,6 +82,10 @@ describe('the Vitest adapter and reporter in real runs', { timeout: 120_000 }, (
       'concurrent-a': 'passed:1:0',
       'concurrent-b': 'passed:1:0',
     });
+    // Metadata that the adapter did not write is ignored and reported, never trusted.
+    expect(manifests(run.out)[0]?.errors).toEqual([
+      'carries foreign metadata under the same key: unrecognised matrix metadata; the test was ignored',
+    ]);
     const late = report.evidence.tests.find((t) => t.caseId === 'late-cover');
     expect(late?.lateCheckpoints).toBe(1);
     const workers = new Set(
